@@ -209,6 +209,8 @@ def apply_accent(accent, live=True):
         atomic(ROOT / relative, re.sub(expression, lambda match: replacements[match[0]], text, flags=re.I))
     lua = 'hl.config({ general = { col = { active_border = "rgba(' + accent[1:] + 'ff)" } } })\n'
     atomic(ROOT / 'accent.lua', lua)
+    import branding
+    branding.apply(ROOT,live=False)
     if not live: return
     subprocess.run(['hyprctl', 'eval', lua.strip()], check=True, capture_output=True)
     for process in psutil.process_iter(['name', 'cmdline']):

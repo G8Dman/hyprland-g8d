@@ -18,6 +18,7 @@ from gi.repository import Gdk, GdkPixbuf, GLib, Gtk, GtkLayerShell as Layer, Pan
 from data import Collector, media_control
 import gaming
 import appearance
+import branding
 import brightness
 from window_switcher import WindowSwitcher
 from calendar_sync import CalendarSync
@@ -510,7 +511,7 @@ class App:
             layout = Gtk.Grid()
             layout.set_column_homogeneous(True)
             left, middle, right = box(False), box(False), box(False)
-            left.pack_start(label('g8d / GAME', 'value'), False, False, 14)
+            left.pack_start(label(branding.read()+' / GAME', 'value'), False, False, 14)
             middle.pack_start(label(datetime.datetime.now().strftime('%H:%M')), False, False, 0)
             right.pack_end(label('⏻'), False, False, 16)
             middle.set_halign(Gtk.Align.CENTER)
@@ -560,6 +561,7 @@ class App:
             message = json.loads(self.socket.recv(65536))
             if "switcher" in message: self.switcher.update(message["switcher"])
             if message.get('appearance') == 'reload': self.css.load_from_path(str(appearance.ROOT / 'plugins/style.css'))
+            if message.get('branding') == 'reload': self.build_game_bars()
             if message.get('game') == 'toggle': self.toggle_game()
             if isinstance(message.get('cursor_effect'), bool): self.fracture.set_enabled(message['cursor_effect'], persist=False)
             if isinstance(message.get('brightness'), dict):

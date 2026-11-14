@@ -15,7 +15,7 @@ for path in [root/'install.sh',root/'bootstrap.sh',root/'uninstall.sh',*list((ro
 for path in (root/'config').rglob('*.json'):json.loads(path.read_text())
 for base in [root/'config',root/'extras']:
     for path in base.rglob('*'):
-        if not path.is_file():continue
+        if not path.is_file() or '__pycache__' in path.parts:continue
         assert path.name not in {'calendar.json','appearance.json','monitors.lua','state.conf'},path
         assert 'backups' not in path.parts and 'calendar_vendor' not in path.parts,path
         if path.suffix in {'.png','.svg'}:continue

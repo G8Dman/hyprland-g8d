@@ -13,6 +13,7 @@ import gi
 gi.require_version('Gtk', '3.0')
 gi.require_version('Gdk', '3.0')
 from gi.repository import Gdk, Gio, GLib, Gtk, Pango
+import branding
 import file_associations
 import wifi
 
@@ -137,14 +138,15 @@ class Settings(Gtk.Application):
         self.window.connect('key-press-event', self.key)
         header = Gtk.HeaderBar(title='Настройки g8d', subtitle='Твой рабочий стол')
         header.set_show_close_button(True)
-        header.pack_end(button('Обновить', self.refresh))
+        header.pack_end(button('Обновить данные', self.refresh))
         self.window.set_titlebar(header)
         self.install_css()
         layout = Gtk.Box()
         sidebar = column(6)
         sidebar.get_style_context().add_class('sidebar')
         sidebar.set_size_request(218, -1)
-        sidebar.pack_start(text('g8d', 'brand'), False, False, 12)
+        self.brand_label=text(branding.read(), 'brand')
+        sidebar.pack_start(self.brand_label, False, False, 12)
         self.stack = Gtk.Stack()
         self.stack.set_transition_type(Gtk.StackTransitionType.SLIDE_UP_DOWN)
         self.stack.set_transition_duration(180)
@@ -669,6 +671,13 @@ window.g8d-settings { background: #161b20; color: #dbe1e5; }
 
     def build_appearance(self):
         page=self.pages['appearance']
+        self.brand_entry=Gtk.Entry()
+        self.brand_entry.set_max_length(32)
+        self.brand_entry.set_text(branding.read())
+        self.brand_entry.connect('activate',lambda *_:self.save_brand())
+        row(page,'Название оболочки','Надпись на панели, в настройках и блокировке. Имя сессии остаётся hyprland-g8d.')
+        page.pack_start(self.brand_entry,False,False,0)
+        page.pack_start(button('Сохранить название',self.save_brand),False,False,0)
         row(page,'Обои и акцентный цвет','Отдельные обои для каждого экрана, изображения и видео без звука',
             button('Выбрать',lambda:self.launch([str(ROOT/'actions'),'appearance'])))
         row(page,'Папка с обоями',str(Path.home()/'Изображения/wallpaper'),
@@ -681,6 +690,17 @@ window.g8d-settings { background: #161b20; color: #dbe1e5; }
         page.pack_start(self.appearance_status,False,False,0)
         row(page,'Игровой режим','Уменьшает расход памяти оболочки; отключает обои и эффекты',
             button('Переключить',self.toggle_game))
+
+    def save_brand(self):
+        try:
+            value=branding.save(self.brand_entry.get_text())
+            self.brand_entry.set_text(value)
+            self.brand_label.set_text(value)
+            self.message('Название сохранено')
+        except (OSError,ValueError) as exc:self.message(str(exc),True)
+
+    def update_shell(self):
+        self.launch(['kitty','--title','Обновление hyprland-g8d','python3',str(PLUGINS/'updater.py')])
 
     def effect_changed(self,switch,_):
         if self.updating:return
@@ -717,6 +737,8 @@ window.g8d-settings { background: #161b20; color: #dbe1e5; }
 
     def build_about(self):
         page=self.pages['about']
+        version=(ROOT/'VERSION').read_text().strip() if (ROOT/'VERSION').exists() else 'Локальная сборка'
+        row(page,'Обновление hyprland-g8d',version+' · скачивает последний релиз, включая alpha, с GitHub. Настройки сохраняются; системный Hyprland и пакеты не обновляются.',button('Обновить оболочку',self.update_shell))
         self.about_status=text('','muted',True)
         page.pack_start(self.about_status,False,False,0)
         for title,keys in [('Настройки','Win + Ctrl + S'),('Обои и цвет','Win + W'),('Поиск приложений','Win + R'),

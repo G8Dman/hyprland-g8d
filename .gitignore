@@ -9,3 +9,4 @@ config/appearance.json
 config/monitors.lua
 config/cursor-effects.json
 .env
+config/branding.json
