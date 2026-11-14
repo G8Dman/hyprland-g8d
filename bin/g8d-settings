@@ -1,0 +1,4 @@
+#!/usr/bin/env bash
+set -euo pipefail
+export PATH="$HOME/.local/share/hyprland-g8d/venv/bin:$PATH"
+exec python3 "$HOME/.config/hyprland-g8d/plugins/settings.py" "$@"

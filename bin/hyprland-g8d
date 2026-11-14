@@ -1,0 +1,15 @@
+#!/usr/bin/env bash
+set -euo pipefail
+root="${G8D_CONFIG_DIR:-$HOME/.config/hyprland-g8d}"
+export PATH="$HOME/.local/share/hyprland-g8d/venv/bin:$HOME/.local/bin:$PATH"
+export G8D_CONFIG_DIR="$root"
+export G8D_SESSION=1
+export XDG_CURRENT_DESKTOP=Hyprland
+export XDG_SESSION_DESKTOP=hyprland-g8d
+export XDG_SESSION_TYPE=wayland
+if [[ -f /usr/lib/qt6/plugins/platformthemes/KDEPlasmaPlatformTheme.so ]]; then
+    export QT_QPA_PLATFORMTHEME=kde
+elif command -v qt6ct >/dev/null; then
+    export QT_QPA_PLATFORMTHEME=qt6ct
+fi
+exec /usr/bin/start-hyprland -- --config "$root/hyprland.lua" "$@"

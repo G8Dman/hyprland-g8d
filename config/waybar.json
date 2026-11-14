@@ -1,0 +1,114 @@
+{
+  "layer": "top",
+  "position": "top",
+  "height": 36,
+  "spacing": 4,
+  "modules-left": [
+    "custom/brand",
+    "custom/ws1",
+    "custom/ws2",
+    "custom/ws3",
+    "custom/ws4",
+    "custom/ws5",
+    "hyprland/window"
+  ],
+  "modules-center": [
+    "clock"
+  ],
+  "modules-right": [
+    "custom/tray-restore",
+    "tray",
+    "hyprland/language",
+    "network",
+    "pulseaudio",
+    "battery",
+    "custom/power"
+  ],
+  "custom/brand": {
+    "format": "g8d",
+    "tooltip-format": "Приложения · Super+R",
+    "on-click": "$HOME/.config/hyprland-g8d/actions launcher"
+  },
+  "hyprland/window": {
+    "max-length": 40,
+    "separate-outputs": true
+  },
+  "clock": {
+    "format": "{:%H:%M}",
+    "format-alt": "{:%d.%m.%Y · %H:%M}",
+    "tooltip-format": "<big>{:%A, %d %B}</big>\n<tt>{calendar}</tt>"
+  },
+  "tray": {
+    "spacing": 12,
+    "icon-size": 16,
+    "show-passive-items": true
+  },
+  "hyprland/language": {
+    "format": "{}",
+    "format-en": "EN",
+    "format-ru": "RU"
+  },
+  "network": {
+    "format-wifi": "WI-FI",
+    "format-ethernet": "LAN",
+    "format-disconnected": "OFFLINE",
+    "tooltip-format": "{ifname} · {ipaddr}",
+    "tooltip-format-wifi": "{essid} · {signalStrength}%\n{ipaddr}",
+    "on-click": "nm-connection-editor"
+  },
+  "pulseaudio": {
+    "format": "VOL {volume}%",
+    "format-muted": "MUTE",
+    "on-click": "pavucontrol",
+    "on-click-right": "wpctl set-mute @DEFAULT_AUDIO_SINK@ toggle",
+    "scroll-step": 5
+  },
+  "battery": {
+    "format": "BAT {capacity}%",
+    "format-charging": "+ {capacity}%",
+    "format-full": "BAT 100%",
+    "states": {
+      "warning": 25,
+      "critical": 10
+    }
+  },
+  "custom/power": {
+    "format": "⏻",
+    "tooltip-format": "Меню сессии · Super+Escape",
+    "on-click": "$HOME/.config/hyprland-g8d/actions power"
+  },
+  "custom/ws1": {
+    "exec": "python3 $HOME/.config/hyprland-g8d/workspaces.py 1",
+    "return-type": "json",
+    "restart-interval": 2,
+    "on-click": "python3 $HOME/.config/hyprland-g8d/workspaces.py 1 --click"
+  },
+  "custom/ws2": {
+    "exec": "python3 $HOME/.config/hyprland-g8d/workspaces.py 2",
+    "return-type": "json",
+    "restart-interval": 2,
+    "on-click": "python3 $HOME/.config/hyprland-g8d/workspaces.py 2 --click"
+  },
+  "custom/ws3": {
+    "exec": "python3 $HOME/.config/hyprland-g8d/workspaces.py 3",
+    "return-type": "json",
+    "restart-interval": 2,
+    "on-click": "python3 $HOME/.config/hyprland-g8d/workspaces.py 3 --click"
+  },
+  "custom/ws4": {
+    "exec": "python3 $HOME/.config/hyprland-g8d/workspaces.py 4",
+    "return-type": "json",
+    "restart-interval": 2,
+    "on-click": "python3 $HOME/.config/hyprland-g8d/workspaces.py 4 --click"
+  },
+  "custom/ws5": {
+    "exec": "python3 $HOME/.config/hyprland-g8d/workspaces.py 5",
+    "return-type": "json",
+    "restart-interval": 2,
+    "on-click": "python3 $HOME/.config/hyprland-g8d/workspaces.py 5 --click"
+  },
+  "custom/tray-restore": {
+    "exec": "python3 $HOME/.config/hyprland-g8d/plugins/tray-restore.py",
+    "tooltip": false
+  }
+}

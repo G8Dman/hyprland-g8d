@@ -1,0 +1,16 @@
+* { font-family: "DejaVu Sans", sans-serif; font-size: 12px; border: none; border-radius: 0; min-height: 0; }
+window#waybar { background: #111519; color: #c2ccd3; border-bottom: 1px solid #263039; }
+tooltip { background: #161b20; border: 1px solid #303b43; border-radius: 6px; }
+#custom-brand { color: #8bbfba; font-weight: bold; padding: 0 18px; }
+#custom-ws1, #custom-ws2, #custom-ws3, #custom-ws4, #custom-ws5 { color: #65737e; padding: 0 10px; margin: 5px 1px; border-radius: 4px; }
+#custom-ws1.active, #custom-ws2.active, #custom-ws3.active, #custom-ws4.active, #custom-ws5.active { color: #a5d2cd; background: #263638; }
+#custom-ws1.occupied, #custom-ws2.occupied, #custom-ws3.occupied, #custom-ws4.occupied, #custom-ws5.occupied { color: #c2ccd3; }
+#custom-ws1:hover, #custom-ws2:hover, #custom-ws3:hover, #custom-ws4:hover, #custom-ws5:hover, #custom-power:hover { background: #263638; }
+#hyprland-window { color: #74838f; padding: 0 16px; }
+#clock { color: #dbe1e5; }
+#network, #pulseaudio, #battery, #tray, #hyprland-language { padding: 0 10px; }
+#battery.warning { color: #c7b58a; }
+#battery.critical { color: #d99393; }
+#custom-power { padding: 0 17px; color: #8bbfba; }
+#custom-codex { font-family: "DejaVu Sans Mono"; font-size: 17px; font-weight: bold; color: #8bbfba; padding: 0 10px; margin: 4px 0; border-radius: 5px; }
+#custom-codex:hover { background: #263638; }

@@ -1,0 +1,34 @@
+window.g8d-trigger { background-color: transparent; }
+window.g8d-popup { background-color: #161b20; color: #dbe1e5; border: 1px solid #35454b; border-radius: 10px; }
+.g8d-popup * { font-family: "DejaVu Sans"; font-size: 12px; }
+.g8d-popup .body { padding: 18px; }
+.g8d-popup .heading { color: #6faede; font-size: 11px; font-weight: bold; letter-spacing: 1px; }
+.g8d-popup .title { font-size: 19px; font-weight: bold; }
+.g8d-popup .muted { color: #80909c; font-size: 11px; }
+.g8d-popup .value { color: #6faede; }
+.g8d-popup button { background-image: none; background-color: #222c32; color: #dbe1e5; border: 1px solid #303e46; border-radius: 6px; padding: 8px 12px; box-shadow: none; text-shadow: none; }
+.g8d-popup button:hover { background-color: #283b4a; border-color: #6faede; }
+.g8d-popup button:disabled { color: #66727c; background-color: #1c2329; }
+.g8d-popup progressbar trough { min-height: 4px; background-color: #273239; border: none; border-radius: 2px; }
+.g8d-popup progressbar progress { min-height: 4px; background-color: #6faede; border: none; border-radius: 2px; }
+.g8d-popup separator { background-color: #2b363e; min-height: 1px; margin: 5px 0; }
+.g8d-popup .process { font-family: "DejaVu Sans Mono"; font-size: 10px; }
+.g8d-popup scrollbar slider { background-color: #35454b; min-width: 3px; }
+window.game-bar { background-color: #111519; border-radius: 0; border-width: 0 0 1px; }
+.g8d-popup scale { padding: 5px 0; }
+.g8d-popup scale trough { min-height: 5px; background-color: #273239; border: none; border-radius: 3px; }
+.g8d-popup scale highlight { min-height: 5px; background-color: #6faede; border: none; border-radius: 3px; }
+.g8d-popup scale slider { min-width: 14px; min-height: 14px; background-color: #6faede; background-image: none; border: none; border-radius: 8px; box-shadow: none; }
+
+.g8d-popup .window-switcher { padding: 18px; }
+.g8d-popup button.switcher-selected { background-color: #6faede; color: #111519; border-color: #6faede; }
+
+.g8d-popup .dashboard-card { background-color: #1b232a; border: 1px solid #2b363e; border-radius: 8px; padding: 14px; }
+.g8d-popup calendar { background-color: transparent; color: #dbe1e5; border: none; padding: 6px; }
+.g8d-popup calendar:selected { background-color: #6faede; color: #111519; border-radius: 4px; }
+.g8d-popup calendar.header { background-color: transparent; color: #dbe1e5; }
+.g8d-popup calendar.highlight { color: #6faede; }
+.g8d-popup entry { background-color: #161b20; color: #dbe1e5; border: 1px solid #35454b; padding: 6px; }
+
+.g8d-popup stackswitcher button:checked { background-color: #27384a; border-color: #6faede; color: #6faede; }
+.g8d-popup stackswitcher button { outline-width: 0; }

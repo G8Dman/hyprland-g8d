@@ -1,0 +1,11 @@
+__pycache__/
+*.pyc
+.venv/
+dist/
+*.log
+config/backups/
+config/calendar.json
+config/appearance.json
+config/monitors.lua
+config/cursor-effects.json
+.env

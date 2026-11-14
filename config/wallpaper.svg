@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="3840" height="2160" viewBox="0 0 3840 2160">
+  <rect width="3840" height="2160" fill="#111519"/>
+  <path d="M2600 0V2160 M0 1500H3840" stroke="#1b242c" stroke-width="2"/>
+  <rect x="2576" y="1476" width="48" height="48" rx="8" fill="#111519" stroke="#8bbfba" stroke-width="2"/>
+  <circle cx="2600" cy="1500" r="4" fill="#8bbfba"/>
+  <text x="240" y="1830" fill="#8bbfba" font-family="DejaVu Sans" font-size="62" letter-spacing="8">g8d</text>
+  <text x="240" y="1890" fill="#52616d" font-family="DejaVu Sans Mono" font-size="20" letter-spacing="5">G R A P H I T E / 0 1</text>
+  <path d="M240 1710H300" stroke="#8bbfba" stroke-width="2"/>
+</svg>

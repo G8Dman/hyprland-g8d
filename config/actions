@@ -1,0 +1,37 @@
+#!/usr/bin/env bash
+set -euo pipefail
+root="${G8D_CONFIG_DIR:-$HOME/.config/hyprland-g8d}"
+menu() { rofi -no-config -theme "$root/rofi.rasi" "$@"; }
+case "${1:-help}" in
+    settings) exec python3 "$root/plugins/settings.py" ;;
+    files) exec xdg-open "$HOME" ;;
+    browser) exec xdg-open https://www.startpage.com ;;
+    terminal) exec kitty --config "$root/kitty.conf" ;;
+    appearance) exec python3 "$root/plugins/appearance.py" picker ;;
+    launcher) exec rofi -no-config -theme "$root/rofi.rasi" -show drun -show-icons -drun-display-format '{name}' ;;
+    lock) pgrep -u "$UID" -x hyprlock >/dev/null || exec hyprlock -c "$root/hyprlock.conf" ;;
+    screenshot)
+        geometry=$(slurp -b 111519bb -c 8bbfba -w 1) || exit 0
+        dir="$HOME/Pictures/Screenshots"
+        mkdir -p "$dir"
+        file="$dir/g8d-$(date +%Y%m%d-%H%M%S-%N).png"
+        grim -g "$geometry" "$file"
+        wl-copy --type image/png < "$file"
+        notify-send 'g8d / снимок экрана' "Сохранён и скопирован: $file"
+        ;;
+    help) exec kitty --config "$root/kitty.conf" less -R "$root/KEYS.txt" ;;
+    power)
+        choice=$(printf 'Блокировка\nВыход из сессии\nСон\nПерезагрузка\nВыключение\n' | menu -dmenu -p 'g8d / сессия') || exit 0
+        case "$choice" in
+            Блокировка) "$0" lock ;;
+            'Выход из сессии') hyprctl dispatch 'hl.dsp.exit()' ;;
+            Сон) systemctl suspend ;;
+            Перезагрузка|Выключение)
+                confirm=$(printf 'Отмена\nДа\n' | menu -dmenu -p "$choice?") || exit 0
+                [[ "$confirm" = Да ]] || exit 0
+                if [[ "$choice" = Перезагрузка ]]; then systemctl reboot; else systemctl poweroff; fi
+                ;;
+        esac
+        ;;
+    *) echo "Unknown action: $1" >&2; exit 2 ;;
+esac
