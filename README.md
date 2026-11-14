@@ -23,10 +23,10 @@
 Запускай из терминала **обычным пользователем**, без `sudo` перед всей командой:
 
 ```bash
-bash <(curl -fsSL https://raw.githubusercontent.com/G8Dman/hyprland-g8d/v0.1.0-alpha.2/bootstrap.sh)
+curl -fsSL -o /tmp/g8d-bootstrap.sh https://raw.githubusercontent.com/G8Dman/hyprland-g8d/v0.1.0-alpha.2/bootstrap.sh && bash /tmp/g8d-bootstrap.sh
 ```
 
-Нужны интернет, `curl`, `tar`, `bash` и доступ к `sudo`.
+Нужны интернет, `curl`, `tar`, `bash` и доступ к `sudo`. Команда сохраняет скрипт во временный файл и запускает его через `bash`, поэтому она работает в `bash`, `zsh` и `fish`.
 Установщик скачивает именно указанный alpha-релиз, запрашивает установку пакетов
 через `pacman`, создаёт изолированное Python-окружение, проверяет Lua-конфиг
 и добавляет пункт сессии. Текущий рабочий стол не перезапускается.
