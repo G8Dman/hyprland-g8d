@@ -74,6 +74,9 @@ def main():
         accent=json.loads(state.read_text()).get('accent','#8bbfba') if state.exists() else '#8bbfba'
         environment={**os.environ,'G8D_APPEARANCE_ROOT':str(config),'G8D_ACCENT':accent}
         execute([venv/'bin/python','-c',"import os,sys;sys.path.insert(0,os.environ['G8D_APPEARANCE_ROOT']+'/plugins');import appearance;appearance.apply_accent(os.environ['G8D_ACCENT'],live=False)"],env=environment)
+        # Commands in generated bindings must use this installation's interpreter/path.
+        # Do not reload the running compositor or alter the saved JSON overrides.
+        execute([venv/'bin/python','-c',"import os,sys;from pathlib import Path;root=Path(os.environ['G8D_APPEARANCE_ROOT']);sys.path.insert(0,str(root/'plugins'));import shortcuts;state=root/'shortcuts.json';shortcuts.atomic(root/'shortcuts.lua',shortcuts.render(shortcuts.load())) if state.exists() else None"],env=environment)
         if not args.no_session:execute(['sudo','bash',REPO/'scripts/install-session.sh'])
     except Exception:
         if backup:

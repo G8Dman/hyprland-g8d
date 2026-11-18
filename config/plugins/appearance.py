@@ -28,10 +28,19 @@ STATIC = {'.png', '.jpg', '.jpeg', '.bmp', '.tif', '.tiff', '.webp', '.avif', '.
 VIDEO = {'.gif', '.mp4', '.webm', '.mkv', '.mov', '.avi', '.m4v', '.mpeg', '.mpg', '.ogv', '.apng'}
 PALETTE = {'Графит / бирюзовый': '#8bbfba', 'Лаванда': '#b6a3df', 'Небесный': '#8ab7ed',
            'Мята': '#91cfa4', 'Розовый': '#e7a2ba', 'Янтарный': '#e8bd7f', 'Коралловый': '#e99b8b'}
+THEMES = {'graphite': 'Graphite', 'clear': 'Clear'}
+THEME_FILES = ['plugins/style.css', 'plugins/settings.css', 'waybar.css',
+               'rofi.rasi', 'mako.conf', 'hyprlock.conf', 'kitty.conf']
+COLOR_LABELS = {'background': 'Фон', 'surface': 'Поверхности', 'control': 'Кнопки',
+                'text': 'Основной текст', 'muted': 'Вторичный текст', 'border': 'Границы',
+                'selection': 'Выделение', 'bar_text': 'Текст верхней панели'}
+DEFAULT_COLORS = {
+    'graphite': dict(zip(COLOR_LABELS, ['#161b20', '#1b232a', '#222c32', '#dbe1e5', '#80909c', '#35454b', '#263638', '#c2ccd3'])),
+    'clear': dict(zip(COLOR_LABELS, ['#f9fbfd', '#ffffff', '#edf2f7', '#263544', '#64778a', '#d4dee7', '#e2edf7', '#ffffff']))}
 
 
 def read_selection():
-    defaults = {'wallpaper': str(ROOT / 'wallpaper.png'), 'accent': '#8bbfba', 'wallpapers': {}}
+    defaults = {'wallpaper': str(ROOT / 'wallpaper.png'), 'accent': '#8bbfba', 'wallpapers': {}, 'theme': 'graphite'}
     try: return {**defaults, **json.loads(SELECTION.read_text())}
     except (OSError, ValueError): return defaults
 
@@ -85,18 +94,71 @@ def thumbnail(path):
     return target
 
 
-def auto_accent(path):
+def luminance(rgb):
+    values = [v / 255 / 12.92 if v / 255 <= .04045 else ((v / 255 + .055) / 1.055) ** 2.4 for v in rgb]
+    return sum(v * weight for v, weight in zip(values, [.2126, .7152, .0722]))
+
+
+def rgb(color):
+    return tuple(int(color[i:i + 2], 16) for i in (1, 3, 5))
+
+
+def contrast(first, second):
+    a, b = sorted((luminance(rgb(first)), luminance(rgb(second))))
+    return (b + .05) / (a + .05)
+
+
+def analyze_wallpaper(path):
+    """One deterministic analysis per image/video selection; never per animation frame."""
     with Image.open(thumbnail(path)) as image:
-        image = image.convert('RGB').resize((64, 64)).quantize(colors=12)
+        sample = image.convert('RGB').resize((96, 96))
+        lightness = []
+        for pixel in sample.getdata():
+            y = luminance(pixel)
+            lightness.append((116 * y ** (1 / 3) - 16 if y > .008856 else 903.3 * y) / 100)
+        lightness.sort()
+        brightness = .7 * sum(lightness) / len(lightness) + .3 * lightness[len(lightness) // 2]
+        theme = 'clear' if brightness >= .55 else 'graphite'
+        image = sample.quantize(colors=24)
         palette = image.getpalette()
         candidates = []
         for count, index in image.getcolors():
-            rgb = palette[index * 3:index * 3 + 3]
-            h, s, v = colorsys.rgb_to_hsv(*(c / 255 for c in rgb))
-            candidates.append((count * (s + .12) * (.2 < v < .96), h, s))
-        _, hue, saturation = max(candidates)
-        color = colorsys.hsv_to_rgb(hue, min(.52, max(.20, saturation)), .87)
-        return '#' + ''.join(f'{round(c * 255):02x}' for c in color)
+            channels = palette[index * 3:index * 3 + 3]
+            h, s, v = colorsys.rgb_to_hsv(*(c / 255 for c in channels))
+            if s >= .15 and v >= .12:
+                candidates.append((count * (.2 + s) ** 1.5, h, s))
+        if candidates:
+            _, hue, saturation = max(candidates)
+            color = colorsys.hsv_to_rgb(hue, min(.65, saturation), .87 if theme == 'graphite' else .68)
+            accent = '#' + ''.join(f'{round(c * 255):02x}' for c in color)
+        else:
+            accent = '#9ba7b3' if theme == 'graphite' else '#587083'
+        return {'theme': theme, 'accent': accent, 'brightness': round(brightness, 3)}
+
+
+def auto_accent(path):
+    return analyze_wallpaper(path)['accent']
+
+
+def theme_colors(theme=None, state=None):
+    state = read_selection() if state is None else state
+    theme = theme_name(state) if theme is None else theme
+    return {**DEFAULT_COLORS[theme], **state.get('theme_colors', {}).get(theme, {})}
+
+
+def validate_colors(colors, theme):
+    if not isinstance(colors, dict): raise ValueError('Цвета должны быть объектом JSON')
+    for key, value in colors.items():
+        if key not in COLOR_LABELS: raise ValueError('Неизвестный цвет: ' + key)
+        if not isinstance(value, str) or not re.fullmatch(r'#[0-9a-fA-F]{6}', value):
+            raise ValueError(COLOR_LABELS[key] + ': нужен цвет #RRGGBB')
+    merged = {**DEFAULT_COLORS[theme], **colors}
+    for role in ['background', 'surface', 'control', 'selection']:
+        if contrast(merged['text'], merged[role]) < 4.5:
+            raise ValueError('Основной текст плохо читается на цвете «' + COLOR_LABELS[role] + '». Измени текст или фон.')
+    if any(contrast(merged['muted'], merged[role]) < 3 for role in ['background', 'surface']):
+        raise ValueError('Вторичный текст плохо читается. Измени его цвет или фон.')
+    return {key: value.lower() for key, value in colors.items()}
 
 
 def tagged_renderers(output=None):
@@ -192,33 +254,108 @@ def start_output(output):
     atomic(RENDER_STATE, json.dumps({'outputs': records}))
 
 
-def apply_accent(accent, live=True):
+def theme_name(state=None):
+    name = (read_selection() if state is None else state).get('theme', 'graphite')
+    return name if name in THEMES else 'graphite'
+
+
+def recolor_template(text, theme, replacements, overrides, relative):
+    """Replace source color tokens once, preserving CSS/Hyprlock alpha channels."""
+    groups = {
+        'graphite': {
+            'background': '111519 161b20 11171c', 'surface': '1b232a 1c252d 1c2329',
+            'control': '222c32 26333e 283b4a 304252 273239',
+            'text': 'dbe1e5 c2ccd3 c9d1d8', 'muted': '80909c 8e9ba6 7a8792 74838f 65737e',
+            'border': '35454b 303e46 3b4b57 2c3943 2b363e 303b43 263039',
+            'selection': '263638 263746 27384a'},
+        'clear': {
+            'background': 'f9fbfd f5f8fb f7fafc eff4f8 edf3f8', 'surface': 'ffffff',
+            'control': 'edf2f7 f6f9fc e2ecf5 eaf1f8 dce5ed edf1f5',
+            'text': '263544 475d70', 'muted': '64778a 667889 8694a1 8593a0',
+            'border': 'd4dee7 d6e0e9 d1dce6 e2e9f0 dde5ec',
+            'selection': 'e2edf7 e0ebf5 dae8f3'}}
+    mapping = {key.lstrip('#'): value for key, value in replacements.items() if key.startswith('#')}
+    for role, value in overrides.items():
+        for original in groups[theme].get(role, '').split():
+            if relative == 'waybar.css' and original == 'ffffff': continue
+            mapping[original] = value
+    def replace(match):
+        token = match[0]
+        if token.startswith('#'):
+            key = token[1:7].lower()
+            return mapping.get(key, token[:7]) + token[7:] if key in mapping else token
+        inner = token[5:-1]
+        if ',' not in inner:
+            key = inner[:6].lower()
+            return 'rgba(' + mapping[key][1:] + inner[6:] + ')' if key in mapping else token
+        parts = inner.split(',')
+        key = ''.join(f'{int(v.strip()):02x}' for v in parts[:3])
+        return 'rgba(' + ', '.join(str(c) for c in rgb(mapping[key])) + ',' + parts[3] + ')' if key in mapping else token
+    text = re.sub(r'rgba\([0-9a-fA-F]{8}\)|rgba\(\s*\d+\s*,\s*\d+\s*,\s*\d+\s*,\s*[\d.]+\s*\)|#[0-9a-fA-F]{6}(?:[0-9a-fA-F]{2})?\b', replace, text)
+    if relative == 'waybar.css' and 'bar_text' in overrides:
+        text += '\nwindow#waybar, window#waybar label { color: ' + overrides['bar_text'] + '; }\n'
+    return text
+
+
+def apply_accent(accent, live=True, theme=None, colors=None):
     if not re.fullmatch(r'#[0-9a-fA-F]{6}', accent): raise ValueError('Нужен цвет в формате #RRGGBB')
     accent = accent.lower()
-    rgb = tuple(int(accent[i:i + 2], 16) for i in (1, 3, 5))
+    theme = theme_name() if theme is None else theme
+    if theme not in THEMES: raise ValueError('Неизвестная тема: ' + theme)
+    colors = read_selection().get('theme_colors', {}).get(theme, {}) if colors is None else colors
+    colors = validate_colors(colors, theme)
+    palette = {**DEFAULT_COLORS[theme], **colors}
+    channels = rgb(accent)
+    ink = list(channels)
+    surfaces = [palette[key] for key in ['background', 'surface', 'control', 'selection']]
+    weakest = lambda color: min(contrast(color, bg) for bg in surfaces)
+    target = (0, 0, 0) if weakest('#000000') >= weakest('#ffffff') else (255, 255, 255)
+    for _ in range(128):
+        color = '#' + ''.join(f'{c:02x}' for c in ink)
+        if weakest(color) >= 4.5: break
+        ink = [round(c * .9 + end * .1) if abs(end - c) > 9 else end for c, end in zip(ink, target)]
+    surface_accent = '#' + ''.join(f'{c:02x}' for c in ink)
     def blend(factor):
         base = (17, 21, 25)
-        return '#' + ''.join(f'{round(b + (c - b) * factor):02x}' for b, c in zip(base, rgb))
-    replacements = {'#8bbfba': accent, '#a5d2cd': accent, '#b6d8d4': accent,
+        return '#' + ''.join(f'{round(b + (c - b) * factor):02x}' for b, c in zip(base, channels))
+    replacements = {'#8bbfba': surface_accent, '#a5d2cd': surface_accent, '#b6d8d4': surface_accent,
                     '#263638': blend(.17), '#304647': blend(.25), '#355653': blend(.32),
-                    'rgba(8bbfbaff)': f'rgba({accent[1:]}ff)'}
-    for relative in ['plugins/style.css', 'waybar.css', 'rofi.rasi', 'mako.conf', 'hyprlock.conf', 'kitty.conf']:
-        text = (ROOT / 'appearance-templates' / relative).read_text()
-        # Match once so replacements cannot be modified by later substitutions.
-        expression = '|'.join(re.escape(k) for k in sorted(replacements, key=len, reverse=True))
-        atomic(ROOT / relative, re.sub(expression, lambda match: replacements[match[0]], text, flags=re.I))
-    lua = 'hl.config({ general = { col = { active_border = "rgba(' + accent[1:] + 'ff)" } } })\n'
+                    }
+    source = ROOT / ('appearance-templates' if theme == 'graphite' else 'themes/' + theme)
+    rendered = {}
+    for relative in THEME_FILES:
+        text = (source / relative).read_text()
+        rendered[relative] = recolor_template(text, theme, replacements, colors, relative)
+        if relative == 'plugins/settings.css':
+            on_primary = '#000000' if contrast(surface_accent, '#000000') > contrast(surface_accent, '#ffffff') else '#ffffff'
+            rendered[relative] += '\n@define-color md_on_primary ' + on_primary + ';\n'
+    inactive = colors['border'][1:] + 'aa' if 'border' in colors else 'd4dee7aa' if theme == 'clear' else '30373fff'
+    rounding = 12 if theme == 'clear' else 8
+    lua = ('hl.config({ general = { col = { active_border = "rgba(' + accent[1:] + 'ff)", '
+           'inactive_border = "rgba(' + inactive + ')" } }, decoration = { rounding = ' + str(rounding) + ' } })\n')
+    # Finish reading and validating every source before replacing generated files.
+    for relative, content in rendered.items(): atomic(ROOT / relative, content)
     atomic(ROOT / 'accent.lua', lua)
     import branding
     branding.apply(ROOT,live=False)
-    if not live: return
-    subprocess.run(['hyprctl', 'eval', lua.strip()], check=True, capture_output=True)
+    if live: reload_appearance(lua)
+
+
+def reload_appearance(lua=None):
+    lua = (ROOT / 'accent.lua').read_text() if lua is None else lua
+    result = subprocess.run(['hyprctl', 'eval', lua.strip()], check=True, capture_output=True, text=True, timeout=8)
+    if result.stdout.strip() != 'ok': raise RuntimeError(result.stdout.strip() or 'Hyprland не применил оформление')
+    reload_mako = False
     for process in psutil.process_iter(['name', 'cmdline']):
         try:
+            if process.info['name'] == 'mako' and process.environ().get('HYPRLAND_INSTANCE_SIGNATURE') == SIGNATURE:
+                reload_mako = True
             if process.info['name'] == 'waybar' and str(ROOT / 'waybar.json') in (process.info['cmdline'] or []) and process.environ().get('HYPRLAND_INSTANCE_SIGNATURE') == SIGNATURE:
                 process.send_signal(signal.SIGUSR2)
         except (psutil.Error, OSError): pass
-    subprocess.run(['makoctl', 'reload'], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+    if reload_mako:
+        try: subprocess.run(['makoctl', 'reload'], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, timeout=3)
+        except (OSError, subprocess.TimeoutExpired): pass
     panel_socket = RUNTIME / f'g8d-panels-{os.getuid()}-{SIGNATURE}.sock'
     try:
         with socket.socket(socket.AF_UNIX, socket.SOCK_DGRAM) as connection:
@@ -233,12 +370,15 @@ def locked():
         yield
 
 
-def change(path=None, accent=None, output=None):
-    with locked(): change_locked(path, accent, output)
+def change(path=None, accent=None, output=None, theme=None, live=True, colors=None, reset_colors=False, auto=None):
+    with locked(): change_locked(path, accent, output, theme, live, colors, reset_colors, auto)
 
 
-def change_locked(path=None, accent=None, output=None):
+def change_locked(path=None, accent=None, output=None, theme=None, live=True, colors=None, reset_colors=False, auto=None):
     state = read_selection()
+    if theme is not None:
+        if theme not in THEMES: raise ValueError('Неизвестная тема: ' + theme)
+        state['theme'] = theme
     if path is not None:
         path = Path(path).expanduser().resolve()
         if not path.is_file() or path.suffix.lower() not in STATIC | VIDEO:
@@ -249,22 +389,48 @@ def change_locked(path=None, accent=None, output=None):
             state['wallpapers'] = {}
         else:
             state['wallpapers'][output] = str(path)
-    if accent == 'auto':
-        if output is None:
-            active = next((m['name'] for m in monitors() if m.get('focused')), '')
-            accent = auto_accent(wallpaper_for(active, state))
-        else: accent = auto_accent(wallpaper_for(output, state))
-    if accent is not None:
-        apply_accent(accent)
-        state['accent'] = accent.lower()
-    old = read_selection()
-    atomic(SELECTION, json.dumps(state, ensure_ascii=False, indent=2))
+    explicit_auto = accent == 'auto' or auto is True
+    if auto is not None: state['wallpaper_colors'] = bool(auto)
+    if auto is False and output is not None: state['palette_output'] = output
+    if not explicit_auto and (theme is not None or accent is not None or colors is not None or reset_colors):
+        if state.get('wallpaper_colors'): state['wallpaper_colors'] = False
+    automatic = explicit_auto or (path is not None and state.get('wallpaper_colors') and
+                                  (output is None or output == state.get('palette_output')))
+    if automatic:
+        source = output if explicit_auto and output is not None else state.get('palette_output')
+        if source is None:
+            source = next((m['name'] for m in monitors() if m.get('focused')), '') if live else ''
+        image = wallpaper_for(source, state)
+        analysis = analyze_wallpaper(image)
+        state.update(theme=analysis['theme'], wallpaper_colors=True, palette_output=source,
+                     palette_source=str(image), wallpaper_brightness=analysis['brightness'])
+        accent = analysis['accent']
+    if accent is not None: state['accent'] = accent.lower()
+    active_theme = theme_name(state)
+    if colors is not None or reset_colors:
+        values = {} if reset_colors else validate_colors(colors, active_theme)
+        state.setdefault('theme_colors', {})[active_theme] = values
+    styled = automatic or accent is not None or theme is not None or colors is not None or reset_colors
+    affected = [SELECTION]
+    if styled:
+        affected += [ROOT / name for name in [*THEME_FILES, 'accent.lua', 'waybar.json']]
+    previous = {p: p.read_bytes() if p.exists() else None for p in affected}
     try:
-        if path is not None and not game_enabled(): start(output=output)
+        if styled:
+            apply_accent(state['accent'], live=False, theme=active_theme,
+                         colors=state.get('theme_colors', {}).get(active_theme, {}))
+        atomic(SELECTION, json.dumps(state, ensure_ascii=False, indent=2))
+        if live and styled: reload_appearance()
+        if live and path is not None and not game_enabled(): start(output=output)
     except Exception:
-        atomic(SELECTION, json.dumps(old, ensure_ascii=False, indent=2))
-        apply_accent(old['accent'])
-        start(output=output)
+        for target, content in previous.items():
+            if content is None: target.unlink(missing_ok=True)
+            else: atomic(target, content.decode())
+        if live:
+            try:
+                if styled: reload_appearance()
+                if path is not None and not game_enabled(): start(output=output)
+            except Exception: pass
         raise
 
 
@@ -284,7 +450,7 @@ def menu(entries, prompt, indices=False, grid=True):
 
 
 def picker():
-    action = menu(['Обои', 'Акцентный цвет', 'Обои + цвет из изображения'], 'g8d / оформление')
+    action = menu(['Обои', 'Акцентный цвет', 'Обои + цвет из изображения', 'Тема оболочки'], 'g8d / оформление')
     if action is None: return
     if action in ['Обои', 'Обои + цвет из изображения']:
         connected = monitors()
@@ -292,7 +458,7 @@ def picker():
         outputs = [None]
         for monitor in connected:
             name = monitor['name']
-            title = monitor.get('description', name)
+            title = monitor.get('description') or name
             labels.append(f'{title} [{name}] · {wallpaper_for(name).name}')
             outputs.append(name)
         selected = menu(labels, 'На какой экран?', indices=True, grid=False)
@@ -313,10 +479,18 @@ def picker():
         if index is None: return
         if not index.isdigit() or not 0 <= int(index) < len(files): return
         change(files[int(index)], 'auto' if action == 'Обои + цвет из изображения' else None, output)
+    elif action == 'Тема оболочки':
+        current = theme_name()
+        keys = list(THEMES)
+        descriptions = {'graphite': 'тёмный графит', 'clear': 'прозрачная панель и светлые меню'}
+        choice = menu([f'{THEMES[key]} — {descriptions[key]}' + (' · текущая' if key == current else '')
+                       for key in keys], 'Тема оболочки', indices=True, grid=False)
+        if choice is not None and choice.isdigit() and 0 <= int(choice) < len(keys):
+            change(theme=keys[int(choice)])
     elif action == 'Акцентный цвет':
-        choice = menu(['Цвет из текущих обоев', *PALETTE, 'Свой цвет #RRGGBB'], 'Акцент')
+        choice = menu(['Тема и цвет из текущих обоев', *PALETTE, 'Свой цвет #RRGGBB'], 'Акцент')
         if choice is None: return
-        accent = 'auto' if choice == 'Цвет из текущих обоев' else PALETTE.get(choice)
+        accent = 'auto' if choice == 'Тема и цвет из текущих обоев' else PALETTE.get(choice)
         if choice == 'Свой цвет #RRGGBB': accent = menu([], 'Введи #RRGGBB')
         if accent is not None: change(accent=accent)
 
@@ -326,11 +500,19 @@ if __name__ == '__main__':
     parser.add_argument('action', nargs='?', default='picker', choices=['picker', 'start', 'suspend', 'resume', 'apply'])
     parser.add_argument('--file')
     parser.add_argument('--accent')
+    parser.add_argument('--theme', choices=list(THEMES), help='Shell theme; keeps wallpaper and accent')
+    parser.add_argument('--no-live', action='store_true', help='Generate and save without touching the running session')
+    parser.add_argument('--colors', help='JSON object of custom theme color roles')
+    parser.add_argument('--reset-colors', action='store_true', help='Restore the active theme palette')
+    parser.add_argument('--auto-theme', choices=['on', 'off'], help='Choose light/dark theme and accent from wallpaper')
     parser.add_argument('--output', help='Monitor name; omit to apply to every output')
     arguments = parser.parse_args()
     try:
         if arguments.action == 'picker': picker()
-        elif arguments.action == 'apply': change(arguments.file, arguments.accent, arguments.output)
+        elif arguments.action == 'apply':
+            change(arguments.file, arguments.accent, arguments.output, arguments.theme, not arguments.no_live,
+                   json.loads(arguments.colors) if arguments.colors is not None else None, arguments.reset_colors,
+                   arguments.auto_theme == 'on' if arguments.auto_theme is not None else None)
         else:
             with locked():
                 if arguments.action in ['start', 'resume']: start(force=arguments.action == 'resume')

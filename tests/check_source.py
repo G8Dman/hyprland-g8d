@@ -16,7 +16,7 @@ for path in (root/'config').rglob('*.json'):json.loads(path.read_text())
 for base in [root/'config',root/'extras']:
     for path in base.rglob('*'):
         if not path.is_file() or '__pycache__' in path.parts:continue
-        assert path.name not in {'calendar.json','appearance.json','monitors.lua','state.conf'},path
+        assert path.name not in {'calendar.json','appearance.json','monitors.lua','state.conf','branding.json','shortcuts.json','shortcuts.lua'},path
         assert 'backups' not in path.parts and 'calendar_vendor' not in path.parts,path
         if path.suffix in {'.png','.svg'}:continue
         text=path.read_text()
@@ -28,4 +28,10 @@ for base in [root/'config',root/'extras']:
 lua=(root/'config/hyprland.lua').read_text()
 assert 'HDMI-A-1' not in lua and 'eDP-1' not in lua
 assert 'preferred' in lua and 'monitors.lua' in lua
+assert (root/'VERSION').read_text()==(root/'config/VERSION').read_text()
+assert (root/'VERSION').read_text().strip() in (root/'bootstrap.sh').read_text()
+for name in ['quick_settings.py','quick-settings.css','settings-material.css','shortcuts.py','shortcuts_ui.py']:
+    assert (root/'config/plugins'/name).is_file(),name
+for theme in ['appearance-templates','themes/clear']:
+    assert (root/'config'/theme/'plugins/settings.css').is_file(),theme
 print('PASS: Python/shell/JSON syntax, release privacy audit, portable monitor defaults')

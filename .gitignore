@@ -10,3 +10,5 @@ config/monitors.lua
 config/cursor-effects.json
 .env
 config/branding.json
+config/shortcuts.json
+config/shortcuts.lua

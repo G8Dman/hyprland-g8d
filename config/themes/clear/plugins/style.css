@@ -1,0 +1,63 @@
+window.g8d-trigger { background-color: transparent; }
+window.g8d-popup { background-color: rgba(249, 251, 253, 0.97); color: #263544; border: 1px solid #d4dee7; border-radius: 14px; }
+.g8d-popup * { font-family: "DejaVu Sans"; font-size: 12px; }
+.g8d-popup .body { padding: 18px; }
+.g8d-popup .heading { color: #8bbfba; font-size: 11px; font-weight: bold; letter-spacing: 0px; }
+.g8d-popup .title { font-size: 19px; font-weight: bold; }
+.g8d-popup .muted { color: #667889; font-size: 11px; }
+.g8d-popup .value { color: #b6d8d4; }
+.g8d-popup button { background-image: none; background-color: #edf2f7; color: #263544; border: 1px solid #d6e0e9; border-radius: 6px; padding: 8px 12px; box-shadow: none; text-shadow: none; }
+.g8d-popup button:hover { background-color: #e2ecf5; border-color: #8bbfba; }
+.g8d-popup button:disabled { color: #8694a1; background-color: #edf1f5; }
+.g8d-popup progressbar trough { min-height: 4px; background-color: #dce5ed; border: none; border-radius: 2px; }
+.g8d-popup progressbar progress { min-height: 4px; background-color: #8bbfba; border: none; border-radius: 2px; }
+.g8d-popup separator { background-color: #dde5ec; min-height: 1px; margin: 5px 0; }
+.g8d-popup .process { font-family: "DejaVu Sans Mono"; font-size: 10px; }
+.g8d-popup scrollbar slider { background-color: #d4dee7; min-width: 3px; }
+window.game-bar { background-color: #f5f8fb; border-radius: 0; border-width: 0 0 1px; }
+.g8d-popup scale { padding: 5px 0; }
+.g8d-popup scale trough { min-height: 5px; background-color: #dce5ed; border: none; border-radius: 3px; }
+.g8d-popup scale highlight { min-height: 5px; background-color: #8bbfba; border: none; border-radius: 3px; }
+.g8d-popup scale slider { min-width: 14px; min-height: 14px; background-color: #8bbfba; background-image: none; border: none; border-radius: 8px; box-shadow: none; }
+
+.g8d-popup .window-switcher { padding: 18px; }
+.g8d-popup button.switcher-selected { background-color: #8bbfba; color: #f5f8fb; border-color: #8bbfba; }
+
+.g8d-popup .dashboard-card { background-color: rgba(255, 255, 255, 0.45); border: 1px solid #dde5ec; border-radius: 8px; padding: 14px; }
+.g8d-popup calendar { background-color: transparent; color: #263544; border: none; padding: 6px; }
+.g8d-popup calendar:selected { background-color: #8bbfba; color: #f5f8fb; border-radius: 4px; }
+.g8d-popup calendar.header { background-color: transparent; color: #263544; }
+.g8d-popup calendar.highlight { color: #8bbfba; }
+.g8d-popup entry { background-color: rgba(249, 251, 253, 0.97); color: #263544; border: 1px solid #d4dee7; padding: 6px; }
+
+.g8d-popup stackswitcher button:checked { background-color: #e2edf7; border-color: #8bbfba; color: #8bbfba; }
+.g8d-popup stackswitcher button { outline-width: 0; }
+
+.codex-panel textview, .codex-panel textview text { background-color: #f5f8fb; color: #263544; }
+.codex-panel textview { border: 1px solid #d4dee7; border-radius: 6px; }
+.codex-panel progressbar text { color: #475d70; font-size: 11px; }
+.codex-panel .dashboard-card { padding: 10px 12px; }
+
+/* Clear surfaces keep every existing control and pointer target. */
+.g8d-popup .heading { font-size: 12px; }
+.g8d-popup button:focus, .g8d-popup entry:focus { border-color: #8bbfba; }
+.g8d-popup menu, .g8d-popup popover { background: #f9fbfd; color: #263544; }
+.g8d-popup menuitem:hover { background: #e2edf7; }
+
+.g8d-popup switch { background-image: none; background-color: #dce5ed; border: none; }
+.g8d-popup switch:checked { background-color: #8bbfba; }
+.g8d-popup switch slider { background-image: none; background-color: #ffffff; border: none; box-shadow: none; }
+.g8d-popup switch:disabled { opacity: 0.5; }
+.g8d-popup scale:disabled highlight, .g8d-popup scale:disabled slider { background-color: #bcc9d4; }
+.g8d-popup scale:disabled { opacity: 0.55; }
+
+/* Semantic colors for the compact Material quick-settings surface. */
+@define-color qs_surface rgba(249, 251, 253, 0.98);
+@define-color qs_on_surface #263544;
+@define-color qs_on_surface_variant #64778a;
+@define-color qs_container #edf2f7;
+@define-color qs_outline #d4dee7;
+@define-color qs_primary #8bbfba;
+@define-color qs_primary_container #e2edf7;
+@define-color qs_on_primary_container #263544;
+@define-color qs_error #b33543;

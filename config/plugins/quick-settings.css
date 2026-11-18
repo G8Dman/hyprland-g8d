@@ -1,0 +1,36 @@
+/* Shared compact layout; colors are supplied by the active shell theme. */
+window.g8d-popup.quick-profile {
+    background-color: @qs_surface;
+    color: @qs_on_surface;
+    border-color: @qs_outline;
+    border-radius: 20px;
+}
+.quick-profile .body { padding: 16px; }
+.quick-profile .quick-name { font-size: 15px; font-weight: bold; }
+.quick-profile .quick-footer { color: @qs_on_surface_variant; font-size: 11px; }
+.quick-profile .quick-percent { font-size: 11px; color: @qs_on_surface_variant; }
+.quick-profile .quick-error { color: @qs_error; font-size: 11px; }
+.quick-profile button {
+    padding: 0; background-image: none; box-shadow: none; text-shadow: none;
+    background-color: transparent; color: @qs_on_surface;
+    border: 2px solid transparent;
+    transition: background-color 100ms ease-out;
+}
+.quick-profile button.quick-icon { border-radius: 24px; }
+.quick-profile button.quick-tile { background-color: @qs_container; border-radius: 16px; }
+.quick-profile button.quick-detail { background-color: @qs_container; border-radius: 12px; }
+.quick-profile button:hover { background-color: mix(@qs_container, @qs_primary, 0.08); border-color: transparent; }
+.quick-profile button.quick-tile:checked {
+    background-color: @qs_primary_container; color: @qs_on_primary_container;
+}
+.quick-profile button.quick-tile:checked:hover { background-color: mix(@qs_primary_container, @qs_primary, 0.1); }
+.quick-profile button:active { background-color: mix(@qs_primary_container, @qs_primary, 0.18); }
+.quick-profile button:focus { border-color: @qs_primary; outline-width: 0; }
+.quick-profile button:disabled { opacity: 0.45; color: @qs_on_surface_variant; }
+.quick-profile scale { padding: 6px 0; }
+.quick-profile scale trough { background-color: @qs_container; min-height: 6px; border-radius: 3px; }
+.quick-profile scale highlight { background-color: @qs_primary; min-height: 6px; border-radius: 3px; }
+.quick-profile scale slider { background-color: @qs_primary; min-width: 16px; min-height: 16px; border-radius: 8px; }
+.quick-profile scale:focus slider { box-shadow: 0 0 0 3px alpha(@qs_primary, 0.25); }
+.quick-profile scale:disabled highlight, .quick-profile scale:disabled slider { background-color: @qs_outline; }
+.quick-profile scale:disabled { opacity: 0.5; }

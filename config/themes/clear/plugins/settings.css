@@ -1,0 +1,10 @@
+/* Material You palette roles; geometry lives in settings-material.css. */
+@define-color md_surface #f9fbfd;
+@define-color md_container #ffffff;
+@define-color md_container_high #edf2f7;
+@define-color md_on_surface #263544;
+@define-color md_on_surface_variant #64778a;
+@define-color md_outline #d4dee7;
+@define-color md_primary #8bbfba;
+@define-color md_primary_container #e2edf7;
+@define-color md_error #b33543;

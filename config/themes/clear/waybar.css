@@ -1,0 +1,19 @@
+/* Clear: wallpaper remains visible across the entire bar. No central island. */
+* { font-family: "DejaVu Sans", sans-serif; font-size: 12px; border: none; border-radius: 0; min-height: 0; }
+window#waybar { background: transparent; color: #ffffff; border: none; }
+window#waybar > box { background: transparent; }
+window#waybar label { text-shadow: 0 1px 3px rgba(0, 0, 0, 0.85); }
+tooltip { background: rgba(249, 251, 253, 0.98); color: #263544; border: 1px solid #d4dee7; border-radius: 10px; }
+tooltip label { text-shadow: none; }
+#custom-brand { color: #ffffff; font-weight: bold; padding: 0 18px; }
+#custom-ws1, #custom-ws2, #custom-ws3, #custom-ws4, #custom-ws5 { color: rgba(255, 255, 255, 0.72); padding: 0 10px; margin: 5px 1px; border-radius: 5px; }
+#custom-ws1.occupied, #custom-ws2.occupied, #custom-ws3.occupied, #custom-ws4.occupied, #custom-ws5.occupied { color: #ffffff; }
+#custom-ws1.active, #custom-ws2.active, #custom-ws3.active, #custom-ws4.active, #custom-ws5.active { color: #ffffff; background: rgba(255, 255, 255, 0.18); box-shadow: inset 0 -2px rgba(255, 255, 255, 0.9); }
+#custom-ws1:hover, #custom-ws2:hover, #custom-ws3:hover, #custom-ws4:hover, #custom-ws5:hover, #custom-power:hover, #custom-codex:hover, #custom-brand:hover { background: rgba(255, 255, 255, 0.16); }
+#hyprland-window { color: rgba(255, 255, 255, 0.88); padding: 0 16px; }
+#clock { color: #ffffff; font-weight: bold; background: transparent; padding: 0 12px; }
+#network, #pulseaudio, #battery, #tray, #hyprland-language { padding: 0 10px; }
+#battery.warning { color: #ffe3ad; }
+#battery.critical { color: #ffb4b4; }
+#custom-power { padding: 0 17px; color: #ffffff; }
+#custom-codex { font-family: "DejaVu Sans Mono"; font-size: 17px; font-weight: bold; color: #ffffff; padding: 0 10px; margin: 4px 0; border-radius: 5px; }

@@ -37,3 +37,14 @@ window.game-bar { background-color: #111519; border-radius: 0; border-width: 0 0
 .codex-panel textview { border: 1px solid #35454b; border-radius: 6px; }
 .codex-panel progressbar text { color: #c2ccd3; font-size: 11px; }
 .codex-panel .dashboard-card { padding: 10px 12px; }
+
+/* Semantic colors for the compact Material quick-settings surface. */
+@define-color qs_surface #161b20;
+@define-color qs_on_surface #dbe1e5;
+@define-color qs_on_surface_variant #80909c;
+@define-color qs_container #222c32;
+@define-color qs_outline #35454b;
+@define-color qs_primary #8bbfba;
+@define-color qs_primary_container #263638;
+@define-color qs_on_primary_container #dbe1e5;
+@define-color qs_error #ef9e9e;

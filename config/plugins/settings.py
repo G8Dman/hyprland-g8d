@@ -14,8 +14,10 @@ gi.require_version('Gtk', '3.0')
 gi.require_version('Gdk', '3.0')
 from gi.repository import Gdk, Gio, GLib, Gtk, Pango
 import branding
+import appearance
 import file_associations
 import wifi
+import shortcuts_ui
 
 GLib.set_prgname('g8d-settings')
 GLib.set_application_name('Настройки g8d')
@@ -71,15 +73,32 @@ def button(title, action):
     return widget
 
 
+def group(parent, title=None):
+    if title: parent.pack_start(text(title, 'section-heading'), False, False, 0)
+    body = column(0)
+    body.get_style_context().add_class('settings-group')
+    parent.pack_start(body, False, False, 0)
+    return body
+
+
 def row(parent, title, description='', widget=None):
+    if parent.get_style_context().has_class('settings-page'):
+        children = parent.get_children()
+        parent = children[-1] if children and children[-1].get_style_context().has_class('settings-group') else group(parent)
     line = Gtk.Box(spacing=18)
     line.get_style_context().add_class('setting-row')
     copy = column(4)
-    copy.pack_start(text(title), False, False, 0)
-    if description: copy.pack_start(text(description, 'muted', True), False, False, 0)
+    title_widget = text(title, 'row-title', True)
+    title_widget.set_max_width_chars(48)
+    copy.pack_start(title_widget, False, False, 0)
+    if description:
+        detail = text(description, 'muted', True)
+        detail.set_max_width_chars(48)
+        copy.pack_start(detail, False, False, 0)
     line.pack_start(copy, True, True, 0)
     if widget:
         widget.set_valign(Gtk.Align.CENTER)
+        widget.get_accessible().set_name(title)
         line.pack_end(widget, False, False, 0)
     parent.pack_start(line, False, False, 0)
     return line
@@ -113,10 +132,19 @@ class Settings(Gtk.Application):
         future.add_done_callback(lambda result: GLib.idle_add(completed, result))
 
     def message(self, value, error=False):
+        if getattr(self, 'notice_timer', 0):
+            GLib.source_remove(self.notice_timer)
+            self.notice_timer = 0
         self.notice.set_text(value[:650])
         self.notice.get_style_context().remove_class('error')
         if error: self.notice.get_style_context().add_class('error')
         self.notice_reveal.set_reveal_child(True)
+        if not error:
+            def hide():
+                self.notice_timer = 0
+                self.notice_reveal.set_reveal_child(False)
+                return False
+            self.notice_timer = GLib.timeout_add_seconds(6, hide)
 
     def launch(self, command):
         if not shutil.which(command[0]):
@@ -136,40 +164,70 @@ class Settings(Gtk.Application):
         self.window.set_icon_name('preferences-system')
         self.window.connect('delete-event', self.closing)
         self.window.connect('key-press-event', self.key)
-        header = Gtk.HeaderBar(title='Настройки g8d', subtitle='Твой рабочий стол')
+        Gtk.IconTheme.get_default().prepend_search_path(str(PLUGINS / 'icons'))
+        header = Gtk.HeaderBar(title='Настройки')
         header.set_show_close_button(True)
-        header.pack_end(button('Обновить данные', self.refresh))
+        refresh = Gtk.Button()
+        refresh.add(Gtk.Image.new_from_icon_name('g8d-refresh-symbolic', Gtk.IconSize.LARGE_TOOLBAR))
+        refresh.get_style_context().add_class('icon-button')
+        refresh.set_tooltip_text('Обновить данные')
+        refresh.get_accessible().set_name('Обновить данные')
+        refresh.connect('clicked', lambda *_: self.refresh())
+        header.pack_end(refresh)
         self.window.set_titlebar(header)
         self.install_css()
         layout = Gtk.Box()
-        sidebar = column(6)
+        self.sidebar = sidebar = column(8)
         sidebar.get_style_context().add_class('sidebar')
-        sidebar.set_size_request(218, -1)
+        sidebar.set_size_request(244, -1)
         self.brand_label=text(branding.read(), 'brand')
-        sidebar.pack_start(self.brand_label, False, False, 12)
+        sidebar.pack_start(self.brand_label, False, False, 8)
+        self.nav_caption = text('Рабочий стол', 'muted')
+        sidebar.pack_start(self.nav_caption, False, False, 0)
+        self.search = Gtk.SearchEntry()
+        self.search.set_width_chars(28)
+        self.search.set_placeholder_text('Поиск настроек')
+        self.search.get_accessible().set_name('Поиск настроек')
+        self.search.connect('search-changed', self.search_settings)
+        header.set_custom_title(self.search)
         self.stack = Gtk.Stack()
         self.stack.set_transition_type(Gtk.StackTransitionType.SLIDE_UP_DOWN)
-        self.stack.set_transition_duration(180)
+        self.stack.set_transition_duration(180 if Gtk.Settings.get_default().get_property('gtk-enable-animations') else 0)
         self.stack.set_vhomogeneous(False)
         self.list = Gtk.ListBox()
         self.list.set_selection_mode(Gtk.SelectionMode.SINGLE)
         self.list.connect('row-selected', self.page_selected)
-        sidebar.pack_start(self.list, True, True, 0)
+        self.list.set_filter_func(lambda item: self.matches_search(item))
+        nav_scroll = Gtk.ScrolledWindow()
+        nav_scroll.set_policy(Gtk.PolicyType.NEVER, Gtk.PolicyType.AUTOMATIC)
+        nav_scroll.add(self.list)
+        sidebar.pack_start(nav_scroll, True, True, 8)
         sections = [('network', 'Wi-Fi и сеть', 'Сети, подключения и VPN'),
                     ('bluetooth', 'Bluetooth', 'Устройства и сопряжение'),
                     ('display', 'Экраны', 'Разрешение, масштаб и расположение'),
                     ('defaults', 'Приложения', 'Что открывать по умолчанию'),
+                    ('shortcuts', 'Горячие клавиши', 'Приложения и свои команды'),
                     ('appearance', 'Оформление', 'Обои, цвета и эффекты'),
                     ('audio', 'Звук', 'Громкость, выход и микрофон'),
                     ('about', 'О системе', 'Сессия и горячие клавиши')]
         for key, title, subtitle in sections:
             item = Gtk.ListBoxRow()
             item.page = key
-            label = text(title)
-            label.set_margin_start(12); label.set_margin_end(12)
-            label.set_margin_top(13); label.set_margin_bottom(13)
-            item.add(label); self.list.add(item)
+            item.search_text = title + ' ' + subtitle
+            item.set_tooltip_text(title)
+            item.get_accessible().set_name(title)
+            symbols = {'network':'wifi', 'bluetooth':'bluetooth', 'display':'desktop-windows', 'defaults':'apps',
+                       'shortcuts':'keyboard', 'appearance':'palette', 'audio':'volume-up', 'about':'info'}
+            content = Gtk.Box(spacing=14)
+            content.get_style_context().add_class('nav-item')
+            icon = Gtk.Image.new_from_icon_name('g8d-' + symbols[key] + '-symbolic', Gtk.IconSize.LARGE_TOOLBAR)
+            icon.set_pixel_size(22)
+            content.pack_start(icon, False, False, 0)
+            item.caption = text(title)
+            content.pack_start(item.caption, True, True, 0)
+            item.add(content); self.list.add(item)
             page = column(18)
+            page.get_style_context().add_class('settings-page')
             page.set_border_width(28)
             page.pack_start(text(title, 'title'), False, False, 0)
             page.pack_start(text(subtitle, 'muted'), False, False, 0)
@@ -178,6 +236,11 @@ class Settings(Gtk.Application):
             scroll.set_policy(Gtk.PolicyType.NEVER, Gtk.PolicyType.AUTOMATIC)
             scroll.add(page)
             self.stack.add_named(scroll, key)
+        empty = column(12)
+        empty.set_border_width(32)
+        empty.pack_start(text('Ничего не найдено', 'title'), False, False, 0)
+        empty.pack_start(text('Попробуй другое название настройки.', 'muted'), False, False, 0)
+        self.stack.add_named(empty, 'search-empty')
         main = column(0)
         self.notice_reveal = Gtk.Revealer()
         self.notice = text('', 'notice', True)
@@ -193,43 +256,220 @@ class Settings(Gtk.Application):
         self.build_bluetooth()
         self.build_display()
         self.build_defaults()
+        self.shortcuts_page = shortcuts_ui.ShortcutPage(self, self.pages['shortcuts'])
         self.build_appearance()
         self.build_audio()
         self.build_about()
         self.window.show_all()
         self.list.select_row(self.list.get_row_at_index(0))
         self.refresh()
+        self.compact_navigation = None
+        self.window.connect('size-allocate', self.resize_navigation)
 
     def install_css(self):
-        accent = read_json(ROOT/'appearance.json', {}).get('accent', '#8bbfba')
-        if not re.fullmatch('#[0-9a-fA-F]{6}', accent): accent = '#8bbfba'
         css = Gtk.CssProvider()
-        css.load_from_data(('''
-window.g8d-settings { background: #161b20; color: #dbe1e5; }
-.g8d-settings * { font-family: "DejaVu Sans"; font-size: 13px; }
-.g8d-settings headerbar { background: #1b232a; color: #dbe1e5; border-color: #303e46; }
-.g8d-settings .sidebar { background: #11171c; padding: 14px 8px; }
-.g8d-settings list, .g8d-settings list row { background: transparent; color: #dbe1e5; }
-.g8d-settings list row:selected { background: #263746; color: ACCENT; border-radius: 7px; }
-.g8d-settings .brand { color: ACCENT; font-size: 26px; font-weight: bold; }
-.g8d-settings .title { font-size: 25px; font-weight: bold; }
-.g8d-settings .muted { color: #8e9ba6; font-size: 12px; }
-.g8d-settings .setting-row { background: #1c252d; border: 1px solid #2c3943; border-radius: 8px; padding: 14px; }
-.g8d-settings button { background-image: none; background-color: #26333e; color: #dbe1e5; border: 1px solid #3b4b57; border-radius: 6px; padding: 9px 12px; box-shadow: none; text-shadow: none; }
-.g8d-settings button:hover { border-color: ACCENT; background-color: #304252; }
-.g8d-settings button:disabled { color: #6d7882; }
-.g8d-settings entry, .g8d-settings spinbutton { background: #11171c; color: #dbe1e5; border-color: #3b4b57; }
-.g8d-settings .notice { color: ACCENT; }
-.g8d-settings .error { color: #ef9e9e; }
-'''.replace('ACCENT', accent)).encode())
-        Gtk.StyleContext.add_provider_for_screen(Gdk.Screen.get_default(), css, Gtk.STYLE_PROVIDER_PRIORITY_APPLICATION)
+        css.load_from_path(str(ROOT / 'plugins/settings.css'))
+        screen = Gdk.Screen.get_default()
+        if getattr(self, 'css', None): Gtk.StyleContext.remove_provider_for_screen(screen, self.css)
+        Gtk.StyleContext.add_provider_for_screen(screen, css, Gtk.STYLE_PROVIDER_PRIORITY_APPLICATION)
         self.css = css
+        if not getattr(self, 'material_css', None):
+            self.material_css = Gtk.CssProvider()
+            self.material_css.load_from_path(str(PLUGINS / 'settings-material.css'))
+            Gtk.StyleContext.add_provider_for_screen(screen, self.material_css, Gtk.STYLE_PROVIDER_PRIORITY_APPLICATION + 1)
+
+    def resize_navigation(self, _, allocation):
+        compact = allocation.width < 940
+        if compact == self.compact_navigation: return
+        self.compact_navigation = compact
+        context = self.sidebar.get_style_context()
+        context.add_class('compact') if compact else context.remove_class('compact')
+        self.sidebar.set_size_request(76 if compact else 244, -1)
+        self.brand_label.set_visible(not compact)
+        self.nav_caption.set_visible(not compact)
+        for item in self.list.get_children():
+            item.caption.set_visible(not compact)
+            item.get_child().set_halign(Gtk.Align.CENTER if compact else Gtk.Align.FILL)
+
+    def matches_search(self, item):
+        query = self.search.get_text().strip().casefold()
+        if not query: return True
+        def labels(widget):
+            if isinstance(widget, Gtk.Label): yield widget.get_text()
+            if isinstance(widget, Gtk.Container):
+                for child in widget.get_children(): yield from labels(child)
+        content = item.search_text + ' ' + ' '.join(labels(self.pages[item.page]))
+        return query in content.casefold()
+
+    def search_settings(self, *_):
+        self.list.invalidate_filter()
+        available = [item for item in self.list.get_children() if self.matches_search(item)]
+        if not available:
+            self.stack.set_visible_child_name('search-empty')
+        elif self.list.get_selected_row() not in available or self.stack.get_visible_child_name() == 'search-empty':
+            target = next((item for item in available if item.page == getattr(self, 'last_page', None)), available[0])
+            self.list.select_row(target)
+            self.stack.set_visible_child_name(target.page)
+
+    def refresh_appearance(self):
+        self.install_css()
+        state = appearance.read_selection()
+        self.appearance_updating = True
+        self.theme_combo.set_active_id(appearance.theme_name(state))
+        self.auto_colors.set_active(bool(state.get('wallpaper_colors')))
+        source = state.get('palette_output')
+        if source and source not in self.palette_outputs:
+            self.palette_output.append(source, source)
+            self.palette_outputs.add(source)
+        if source: self.palette_output.set_active_id(source)
+        self.appearance_updating = False
+        self.appearance_status.set_text('Тема: ' + appearance.THEMES[appearance.theme_name(state)] +
+                                        ' · Акцент: ' + state['accent'] +
+                                        (' · По обоям' if state.get('wallpaper_colors') else ' · Вручную'))
+        return False
+
+    def appearance_changed(self, *_):
+        if getattr(self, 'appearance_timer', 0): GLib.source_remove(self.appearance_timer)
+        def refresh():
+            self.appearance_timer = 0
+            return self.refresh_appearance()
+        self.appearance_timer = GLib.timeout_add(120, refresh)
+
+    def apply_theme(self):
+        theme = self.theme_combo.get_active_id()
+        if theme not in appearance.THEMES: return
+        self.theme_apply.set_sensitive(False)
+        self.theme_combo.set_sensitive(False)
+        self.auto_colors.set_sensitive(False)
+        self.palette_output.set_sensitive(False)
+        self.palette_pick.set_sensitive(False)
+        self.palette_edit.set_sensitive(False)
+        def operation():
+            try:
+                run(['python3', str(PLUGINS / 'appearance.py'), 'apply', '--theme', theme])
+                return None
+            except Exception as exc: return str(exc)
+        def done(error):
+            self.theme_apply.set_sensitive(True)
+            self.theme_combo.set_sensitive(True)
+            self.auto_colors.set_sensitive(True)
+            self.palette_output.set_sensitive(True)
+            self.palette_pick.set_sensitive(True)
+            self.palette_edit.set_sensitive(True)
+            self.refresh_appearance()
+            self.message(error if error else 'Тема ' + appearance.THEMES[theme] + ' применена', bool(error))
+        self.work(operation, done)
+
+    def set_wallpaper_colors(self, enabled):
+        if getattr(self, 'appearance_updating', False): return
+        command = ['python3', str(PLUGINS / 'appearance.py'), 'apply', '--auto-theme', 'on' if enabled else 'off']
+        output = self.palette_output.get_active_id()
+        if output: command += ['--output', output]
+        self.auto_colors.set_sensitive(False)
+        self.palette_output.set_sensitive(False)
+        self.palette_pick.set_sensitive(False)
+        self.theme_apply.set_sensitive(False)
+        self.theme_combo.set_sensitive(False)
+        self.palette_edit.set_sensitive(False)
+        def operation():
+            try: run(command, timeout=35); return None
+            except Exception as exc: return str(exc)
+        def done(error):
+            self.auto_colors.set_sensitive(True)
+            self.palette_output.set_sensitive(True)
+            self.palette_pick.set_sensitive(True)
+            self.theme_apply.set_sensitive(True)
+            self.theme_combo.set_sensitive(True)
+            self.palette_edit.set_sensitive(True)
+            self.refresh_appearance()
+            self.message(error if error else 'Тема и акцент подобраны по обоям' if enabled else 'Автоподбор выключен', bool(error))
+        self.work(operation, done)
+
+    def edit_theme_colors(self):
+        state = appearance.read_selection()
+        theme = appearance.theme_name(state)
+        dialog = Gtk.Dialog(title='Цвета темы · ' + appearance.THEMES[theme], transient_for=self.window, modal=True)
+        dialog.get_style_context().add_class('g8d-settings')
+        dialog.get_style_context().add_class('palette-editor')
+        dialog.set_default_size(600, -1)
+        dialog.set_resizable(False)
+        header = Gtk.HeaderBar(title='Цвета темы · ' + appearance.THEMES[theme])
+        header.set_show_close_button(True)
+        dialog.set_titlebar(header)
+        dialog.add_button('Сбросить', 1001)
+        dialog.add_button('Отмена', Gtk.ResponseType.CANCEL)
+        dialog.add_button('Применить', Gtk.ResponseType.OK).get_style_context().add_class('suggested-action')
+        body = dialog.get_content_area()
+        body.set_border_width(20); body.set_spacing(10)
+        body.pack_start(text('Изменения сохранятся для ' + appearance.THEMES[theme] + '. Применение выключит автоподбор.\nАкцент подстраивается для читаемости.', 'muted', True), False, False, 0)
+        fields = {}
+        colors = {'accent': state['accent'], **appearance.theme_colors(theme, state)}
+        labels = {'accent': 'Акцент', **appearance.COLOR_LABELS}
+        grid = Gtk.Grid(column_spacing=16, row_spacing=8)
+        body.pack_start(grid, False, False, 0)
+        def rgba(value):
+            color = Gdk.RGBA(); color.parse(value); return color
+        for index, (key, title) in enumerate(labels.items()):
+            name = text(title)
+            entry = Gtk.Entry(); entry.set_width_chars(9); entry.set_max_length(7); entry.set_text(colors[key])
+            entry.get_accessible().set_name(title + ' · #RRGGBB')
+            swatch = Gtk.ColorButton.new_with_rgba(rgba(colors[key]))
+            swatch.set_title(title); swatch.set_use_alpha(False)
+            swatch.get_accessible().set_name('Выбрать цвет: ' + title)
+            def color_set(widget, field=entry):
+                color = widget.get_rgba()
+                field.set_text('#' + ''.join(f'{round(c * 255):02x}' for c in (color.red, color.green, color.blue)))
+            swatch.connect('color-set', color_set)
+            entry.connect('changed', lambda field, swatch=swatch: swatch.set_rgba(rgba(field.get_text())) if re.fullmatch(r'#[0-9a-fA-F]{6}', field.get_text()) else None)
+            name.set_hexpand(True)
+            grid.attach(name, 0, index, 1, 1); grid.attach(entry, 1, index, 1, 1); grid.attach(swatch, 2, index, 1, 1)
+            fields[key] = entry
+        status = text('', 'error', True)
+        body.pack_start(status, False, False, 0)
+        def response(_, code):
+            if code == 1001:
+                for key, value in {'accent': '#8bbfba', **appearance.DEFAULT_COLORS[theme]}.items(): fields[key].set_text(value)
+                status.set_text('Цвета сброшены. Нажми «Применить», чтобы сохранить.')
+                return
+            if code != Gtk.ResponseType.OK: dialog.destroy(); return
+            values = {key: field.get_text().strip().lower() for key, field in fields.items()}
+            try:
+                for key, value in values.items():
+                    if not re.fullmatch(r'#[0-9a-f]{6}', value): raise ValueError(labels[key] + ': введи #RRGGBB')
+                custom = appearance.validate_colors({key: value for key, value in values.items() if key != 'accent'}, theme)
+                custom = {key: value for key, value in custom.items() if value != appearance.DEFAULT_COLORS[theme][key]}
+            except ValueError as exc: status.set_text(str(exc)); return
+            for code in (1001, Gtk.ResponseType.CANCEL, Gtk.ResponseType.OK): dialog.set_response_sensitive(code, False)
+            dialog.set_deletable(False)
+            command = ['python3', str(PLUGINS / 'appearance.py'), 'apply', '--theme', theme,
+                       '--accent', values['accent'], '--colors', json.dumps(custom)]
+            def operation():
+                try: run(command); return None
+                except Exception as exc: return str(exc)
+            def done(error):
+                if error:
+                    status.set_text(error)
+                    dialog.set_deletable(True)
+                    for code in (1001, Gtk.ResponseType.CANCEL, Gtk.ResponseType.OK): dialog.set_response_sensitive(code, True)
+                else:
+                    dialog.destroy(); self.refresh_appearance(); self.message('Цвета темы сохранены')
+            self.work(operation, done)
+        dialog.connect('response', response)
+        dialog.show_all()
 
     def page_selected(self, _, item):
-        if item: self.stack.set_visible_child_name(item.page)
+        if item:
+            self.last_page = item.page
+            self.stack.set_visible_child_name(item.page)
 
     def key(self, _, event):
+        if event.keyval in (Gdk.KEY_f, Gdk.KEY_F) and event.state & Gdk.ModifierType.CONTROL_MASK:
+            self.search.grab_focus()
+            return True
         if event.keyval == Gdk.KEY_Escape:
+            if self.search.get_text():
+                self.search.set_text('')
+                return True
             self.window.close()
             return True
         return False
@@ -244,7 +484,8 @@ window.g8d-settings { background: #161b20; color: #dbe1e5; }
         row(page, 'Wi-Fi', 'Включить или отключить беспроводную сеть', self.wifi)
         self.wifi_refresh = button('Найти сети', lambda: self.refresh_wifi(True))
         row(page, 'Доступные сети', 'Выбери сеть и подключись прямо здесь', self.wifi_refresh)
-        self.wifi_list = column(10)
+        self.wifi_list = column(0)
+        self.wifi_list.get_style_context().add_class('settings-group')
         page.pack_start(self.wifi_list, False, False, 0)
         self.network_status = text('Проверяю подключения…', 'muted', True)
         page.pack_start(self.network_status, False, False, 0)
@@ -316,6 +557,7 @@ window.g8d-settings { background: #161b20; color: #dbe1e5; }
 
     def ask_wifi_password(self, network):
         dialog = Gtk.Dialog(title='Подключение к '+network['ssid'], transient_for=self.window, modal=True)
+        dialog.get_style_context().add_class('g8d-settings')
         dialog.add_button('Отмена', Gtk.ResponseType.CANCEL)
         dialog.add_button('Подключить', Gtk.ResponseType.OK)
         dialog.set_default_response(Gtk.ResponseType.OK)
@@ -442,7 +684,8 @@ window.g8d-settings { background: #161b20; color: #dbe1e5; }
             self.monitor_controls = []
             for monitor in sorted(monitors, key=lambda m:m['x']):
                 card = column(10)
-                card.get_style_context().add_class('setting-row')
+                card.get_style_context().add_class('settings-group')
+                card.get_style_context().add_class('monitor-card')
                 card.pack_start(text(monitor.get('description') or monitor['name']), False, False, 0)
                 card.pack_start(text(monitor['name'], 'muted'), False, False, 0)
                 combo = Gtk.ComboBoxText()
@@ -463,6 +706,7 @@ window.g8d-settings { background: #161b20; color: #dbe1e5; }
                 for axis in ('x','y'):
                     positions.pack_start(text(axis.upper()),False,False,0)
                     spin=Gtk.SpinButton.new_with_range(-16000,16000,1)
+                    spin.get_accessible().set_name('Положение ' + axis.upper())
                     spin.set_value(monitor[axis]); spin.set_width_chars(5)
                     positions.pack_start(spin,False,False,0);coords.append(spin)
                 row(card,'Расположение', 'Координаты верхнего левого угла',positions)
@@ -511,6 +755,7 @@ window.g8d-settings { background: #161b20; color: #dbe1e5; }
         self.countdown=15
         dialog=Gtk.MessageDialog(transient_for=self.window,modal=True,message_type=Gtk.MessageType.QUESTION,
                                  text='Сохранить настройки экранов?')
+        dialog.get_style_context().add_class('g8d-settings')
         dialog.add_button('Вернуть прежние',Gtk.ResponseType.CANCEL)
         dialog.add_button('Сохранить',Gtk.ResponseType.OK)
         dialog.set_default_response(Gtk.ResponseType.CANCEL)
@@ -613,6 +858,7 @@ window.g8d-settings { background: #161b20; color: #dbe1e5; }
         if not self.format_info: return
         info = dict(self.format_info)
         dialog = Gtk.AppChooserDialog.new_for_content_type(self.window, Gtk.DialogFlags.MODAL, info['mime'])
+        dialog.get_style_context().add_class('g8d-settings')
         dialog.set_title('Чем открывать файлы .'+info['extension']+'?')
         chooser = dialog.get_widget()
         chooser.set_show_all(True)
@@ -670,26 +916,67 @@ window.g8d-settings { background: #161b20; color: #dbe1e5; }
             self.message(str(exc),True)
 
     def build_appearance(self):
-        page=self.pages['appearance']
-        self.brand_entry=Gtk.Entry()
+        page = self.pages['appearance']
+        palette = group(page, 'Тема и палитра')
+        self.theme_combo = Gtk.ComboBoxText()
+        self.theme_combo.get_accessible().set_name('Тема оболочки')
+        self.theme_combo.append('graphite', 'Graphite · тёмная')
+        self.theme_combo.append('clear', 'Clear · светлая')
+        self.theme_combo.set_active_id(appearance.theme_name())
+        self.theme_apply = button('Применить', self.apply_theme)
+        self.theme_apply.get_style_context().add_class('suggested-action')
+        controls = Gtk.Box(spacing=8)
+        controls.pack_start(self.theme_combo, False, False, 0)
+        controls.pack_start(self.theme_apply, False, False, 0)
+        row(palette, 'Тема оболочки', 'Панель, меню и приложения оболочки', controls)
+        self.auto_colors = Gtk.Switch()
+        self.auto_colors.set_active(bool(appearance.read_selection().get('wallpaper_colors')))
+        self.auto_colors.connect('notify::active', lambda switch, *_: self.set_wallpaper_colors(switch.get_active()))
+        row(palette, 'Цвета из обоев', 'Подбирать светлую или тёмную тему и акцент автоматически', self.auto_colors)
+        self.palette_output = Gtk.ComboBoxText()
+        self.palette_outputs = set()
+        try: outputs = appearance.monitors()
+        except Exception: outputs = []
+        for monitor in outputs:
+            name = monitor['name']
+            self.palette_output.append(name, monitor.get('description') or name)
+            self.palette_outputs.add(name)
+        if outputs: self.palette_output.set_active_id(next((m['name'] for m in outputs if m.get('focused')), outputs[0]['name']))
+        self.palette_output.connect('changed', lambda *_: self.set_wallpaper_colors(self.auto_colors.get_active()))
+        row(palette, 'Экран-источник', 'Его обои задают общую палитру', self.palette_output)
+        self.palette_pick = button('Подобрать', lambda: self.set_wallpaper_colors(True))
+        self.palette_edit = button('Настроить', self.edit_theme_colors)
+        color_actions = Gtk.Box(spacing=8)
+        color_actions.pack_start(self.palette_pick, False, False, 0)
+        color_actions.pack_start(self.palette_edit, False, False, 0)
+        row(palette, 'Палитра', 'Акцент, поверхности, текст и границы', color_actions)
+        self.appearance_status = text('', 'muted', True)
+        page.pack_start(self.appearance_status, False, False, 0)
+
+        wallpapers = group(page, 'Обои')
+        row(wallpapers, 'Изображение или видео', 'Можно выбрать отдельно для каждого экрана',
+            button('Выбрать', lambda: self.launch([str(ROOT/'actions'), 'appearance'])))
+        row(wallpapers, 'Моя коллекция', str(Path.home()/'Изображения/wallpaper'),
+            button('Открыть', lambda: self.launch(['xdg-open', str(Path.home()/'Изображения/wallpaper')])))
+
+        shell = group(page, 'Персонализация')
+        self.brand_entry = Gtk.Entry()
+        self.brand_entry.get_accessible().set_name('Название оболочки')
         self.brand_entry.set_max_length(32)
         self.brand_entry.set_text(branding.read())
-        self.brand_entry.connect('activate',lambda *_:self.save_brand())
-        row(page,'Название оболочки','Надпись на панели, в настройках и блокировке. Имя сессии остаётся hyprland-g8d.')
-        page.pack_start(self.brand_entry,False,False,0)
-        page.pack_start(button('Сохранить название',self.save_brand),False,False,0)
-        row(page,'Обои и акцентный цвет','Отдельные обои для каждого экрана, изображения и видео без звука',
-            button('Выбрать',lambda:self.launch([str(ROOT/'actions'),'appearance'])))
-        row(page,'Папка с обоями',str(Path.home()/'Изображения/wallpaper'),
-            button('Открыть',lambda:self.launch(['xdg-open',str(Path.home()/'Изображения/wallpaper')])))
-        self.effect_switch=Gtk.Switch()
-        self.effect_switch.set_active(read_json(EFFECTS,{}).get('enabled',True))
-        self.effect_switch.connect('notify::active',self.effect_changed)
-        row(page,'Эффект перехода курсора','Вспышка и осколки на границе экранов',self.effect_switch)
-        self.appearance_status=text('', 'muted',True)
-        page.pack_start(self.appearance_status,False,False,0)
-        row(page,'Игровой режим','Уменьшает расход памяти оболочки; отключает обои и эффекты',
-            button('Переключить',self.toggle_game))
+        self.brand_entry.connect('activate', lambda *_: self.save_brand())
+        brand_controls = Gtk.Box(spacing=8)
+        self.brand_entry.set_width_chars(12)
+        brand_controls.pack_start(self.brand_entry, True, True, 0)
+        brand_controls.pack_start(button('Сохранить', self.save_brand), False, False, 0)
+        row(shell, 'Название оболочки', 'На панели и экране блокировки', brand_controls)
+        self.effect_switch = Gtk.Switch()
+        self.effect_switch.set_active(read_json(EFFECTS, {}).get('enabled', True))
+        self.effect_switch.connect('notify::active', self.effect_changed)
+        row(shell, 'Переход курсора', 'Вспышка при перемещении между экранами', self.effect_switch)
+        row(shell, 'Игровой режим', 'Приостанавливает обои, анимации и эффекты', button('Переключить', self.toggle_game))
+        self.appearance_monitor = Gio.File.new_for_path(str(ROOT / 'appearance.json')).monitor_file(Gio.FileMonitorFlags.NONE, None)
+        self.appearance_monitor.connect('changed', self.appearance_changed)
 
     def save_brand(self):
         try:
@@ -717,11 +1004,12 @@ window.g8d-settings { background: #161b20; color: #dbe1e5; }
     def build_audio(self):
         page=self.pages['audio']
         self.volume=Gtk.Scale.new_with_range(Gtk.Orientation.HORIZONTAL,0,100,1)
+        self.volume.get_accessible().set_name('Громкость вывода')
         self.volume.set_value_pos(Gtk.PositionType.RIGHT)
         self.volume.set_digits(0)
         self.volume.connect('value-changed',self.volume_changed)
         row(page,'Громкость вывода','Устройство воспроизведения по умолчанию')
-        page.pack_start(self.volume,False,False,0)
+        page.get_children()[-1].pack_start(self.volume,False,False,16)
         row(page,'Устройства и приложения','Вывод звука, микрофон, громкость отдельных программ',
             button('Настроить звук',lambda:self.launch(['pavucontrol'])))
 
@@ -750,10 +1038,11 @@ window.g8d-settings { background: #161b20; color: #dbe1e5; }
     def refresh(self):
         self.refresh_network();self.refresh_bluetooth();self.refresh_display()
         self.lookup_format()
+        self.shortcuts_page.refresh()
         self.updating=True
         self.effect_switch.set_active(read_json(EFFECTS,{}).get('enabled',True))
         self.updating=False
-        self.appearance_status.set_text('Текущий акцент: '+read_json(ROOT/'appearance.json',{}).get('accent','#8bbfba'))
+        self.refresh_appearance()
         self.about_status.set_text('Сессия: '+os.environ.get('XDG_CURRENT_DESKTOP','Hyprland')+'\n'+
                                    'Конфигурация: hyprland-g8d\nИзменения оформления и экранов относятся к этой сборке.')
         def done(value):

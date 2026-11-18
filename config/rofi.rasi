@@ -3,7 +3,7 @@
     bg: #161b20;
     fg: #dbe1e5;
     muted: #7a8792;
-    accent: #6faede;
+    accent: #8bbfba;
     background-color: transparent;
     text-color: @fg;
 }
@@ -14,6 +14,6 @@ prompt { text-color: @accent; }
 entry { placeholder: "Поиск приложений…"; placeholder-color: @muted; }
 listview { lines: 7; fixed-height: false; scrollbar: false; spacing: 4px; }
 element { padding: 10px; border-radius: 6px; spacing: 10px; }
-element selected.normal { background-color: #212f3a; text-color: @accent; }
+element selected.normal { background-color: #263234; text-color: @accent; }
 element-icon { size: 22px; }
 element-text { vertical-align: 0.5; }

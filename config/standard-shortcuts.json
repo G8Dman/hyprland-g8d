@@ -1,0 +1,457 @@
+[
+  {
+    "id": "2b40f17f1e8986d1af48ad8fa6f818f8",
+    "builtin": "settings",
+    "name": "Настройки",
+    "combo": "SUPER + CTRL + S",
+    "kind": "standard"
+  },
+  {
+    "id": "eb431aa5ea3b91b4969f013ccd3fa140",
+    "builtin": "terminal",
+    "name": "Терминал",
+    "combo": "SUPER + T",
+    "kind": "standard"
+  },
+  {
+    "id": "1d008a530303ddd0df45369ca9c95c47",
+    "builtin": "terminal-return",
+    "name": "Терминал · Enter",
+    "combo": "SUPER + Return",
+    "kind": "standard"
+  },
+  {
+    "id": "3079137cde7c9e7ef2c16a828fba931f",
+    "builtin": "files",
+    "name": "Файловый менеджер",
+    "combo": "SUPER + E",
+    "kind": "standard"
+  },
+  {
+    "id": "75cd34cb84f053dce4d31dd1a17bafb9",
+    "builtin": "browser",
+    "name": "Браузер",
+    "combo": "SUPER + B",
+    "kind": "standard"
+  },
+  {
+    "id": "9b3327dc9068789028ac91297147fe60",
+    "builtin": "launcher",
+    "name": "Поиск приложений",
+    "combo": "SUPER + R",
+    "kind": "standard"
+  },
+  {
+    "id": "575b6106bebd6d86674a19d59f060c3c",
+    "builtin": "appearance",
+    "name": "Обои и оформление",
+    "combo": "SUPER + W",
+    "kind": "standard"
+  },
+  {
+    "id": "065a8cad0d3abdf27634e3ea81e9789c",
+    "builtin": "launcher-d",
+    "name": "Поиск приложений · D",
+    "combo": "SUPER + D",
+    "kind": "standard"
+  },
+  {
+    "id": "4c2c61bbfe08b12d92fe1677ada989b0",
+    "builtin": "close-window",
+    "name": "Закрыть окно",
+    "combo": "SUPER + Q",
+    "kind": "standard"
+  },
+  {
+    "id": "38fc9e871a42dd104f987df0d589f2aa",
+    "builtin": "xkill",
+    "name": "Завершить выбранное приложение",
+    "combo": "CTRL + ALT + Escape",
+    "kind": "standard"
+  },
+  {
+    "id": "c4dfbf0a6f35a78f447441884efba9bc",
+    "builtin": "floating",
+    "name": "Плавающее окно",
+    "combo": "SUPER + V",
+    "kind": "standard"
+  },
+  {
+    "id": "43ea2887520731d3596ee1078c5f2dae",
+    "builtin": "fullscreen",
+    "name": "Полный экран",
+    "combo": "SUPER + F",
+    "kind": "standard"
+  },
+  {
+    "id": "d3d0074ff11bf0639cd9f80fe4f0a5b8",
+    "builtin": "split",
+    "name": "Направление разделения окон",
+    "combo": "SUPER + J",
+    "kind": "standard"
+  },
+  {
+    "id": "365c76cd9d885b0b43da99aec6c7046d",
+    "builtin": "lock",
+    "name": "Блокировка",
+    "combo": "SUPER + L",
+    "kind": "standard"
+  },
+  {
+    "id": "ec5e51d7165343bf6d7ebecbf5033b1e",
+    "builtin": "power",
+    "name": "Меню питания",
+    "combo": "SUPER + Escape",
+    "kind": "standard"
+  },
+  {
+    "id": "71e8297fdf58bb5468f22d784cb8a2d7",
+    "builtin": "power-m",
+    "name": "Меню питания · M",
+    "combo": "SUPER + SHIFT + M",
+    "kind": "standard"
+  },
+  {
+    "id": "6c8e4b03b4938ed288e61666e33761bb",
+    "builtin": "help",
+    "name": "Памятка сочетаний",
+    "combo": "SUPER + F1",
+    "kind": "standard"
+  },
+  {
+    "id": "ed193ee17a187c183ffc9ff70e98263d",
+    "builtin": "screenshot",
+    "name": "Снимок экрана",
+    "combo": "Print",
+    "kind": "standard"
+  },
+  {
+    "id": "4ffbe038c6d008320e455f43e2b59a10",
+    "builtin": "screenshot-s",
+    "name": "Снимок экрана · S",
+    "combo": "SUPER + SHIFT + S",
+    "kind": "standard"
+  },
+  {
+    "id": "cdd0b3ce5cf2c040eb8a2181ecba2bab",
+    "builtin": "scratch",
+    "name": "Скрытый рабочий стол",
+    "combo": "SUPER + S",
+    "kind": "standard"
+  },
+  {
+    "id": "0739c235f62c7c05c427a8e864ac4b4c",
+    "builtin": "move-scratch",
+    "name": "Перенести окно на скрытый стол",
+    "combo": "SUPER + SHIFT + V",
+    "kind": "standard"
+  },
+  {
+    "id": "2a15788c3b2fbe0c6fcfaef8f3129525",
+    "builtin": "workspace-next",
+    "name": "Следующий рабочий стол",
+    "combo": "SUPER + mouse_down",
+    "kind": "standard"
+  },
+  {
+    "id": "4d28407f89b4ac99e753fbef511c6879",
+    "builtin": "workspace-prev",
+    "name": "Предыдущий рабочий стол",
+    "combo": "SUPER + mouse_up",
+    "kind": "standard"
+  },
+  {
+    "id": "edd39bccbdde0f848afb79a3858047bb",
+    "builtin": "drag-window",
+    "name": "Перетаскивание окна мышью",
+    "combo": "SUPER + mouse:272",
+    "kind": "standard"
+  },
+  {
+    "id": "14e6ec57161d2f1343d4b86da887e5c5",
+    "builtin": "resize-window",
+    "name": "Размер окна мышью",
+    "combo": "SUPER + mouse:273",
+    "kind": "standard"
+  },
+  {
+    "id": "33be5f920658ed5691d67ebd08a5b736",
+    "builtin": "volume-up",
+    "name": "Увеличить громкость",
+    "combo": "XF86AudioRaiseVolume",
+    "kind": "standard"
+  },
+  {
+    "id": "5a60471035213162bdc90d05769cf499",
+    "builtin": "volume-down",
+    "name": "Уменьшить громкость",
+    "combo": "XF86AudioLowerVolume",
+    "kind": "standard"
+  },
+  {
+    "id": "30a4c1ea96d7f6be1fac47af6998dc90",
+    "builtin": "volume-mute",
+    "name": "Выключить звук",
+    "combo": "XF86AudioMute",
+    "kind": "standard"
+  },
+  {
+    "id": "bcf272f4c95fb54f6f6fe2297b23a9d9",
+    "builtin": "mic-mute",
+    "name": "Выключить микрофон",
+    "combo": "XF86AudioMicMute",
+    "kind": "standard"
+  },
+  {
+    "id": "090d4683cc5684724893f059734f045a",
+    "builtin": "brightness-up",
+    "name": "Увеличить яркость",
+    "combo": "XF86MonBrightnessUp",
+    "kind": "standard"
+  },
+  {
+    "id": "7ab7bcef482d538476331fa6d5a2128d",
+    "builtin": "brightness-down",
+    "name": "Уменьшить яркость",
+    "combo": "XF86MonBrightnessDown",
+    "kind": "standard"
+  },
+  {
+    "id": "dde62bafbafd8979946e616a0dcd4179",
+    "builtin": "media-play",
+    "name": "Воспроизведение / пауза",
+    "combo": "XF86AudioPlay",
+    "kind": "standard"
+  },
+  {
+    "id": "5fda70a4167fd77d451f7781a59607a2",
+    "builtin": "media-next",
+    "name": "Следующий трек",
+    "combo": "XF86AudioNext",
+    "kind": "standard"
+  },
+  {
+    "id": "8a0264d366ee2cc688413a0bb0f166c8",
+    "builtin": "media-prev",
+    "name": "Предыдущий трек",
+    "combo": "XF86AudioPrev",
+    "kind": "standard"
+  },
+  {
+    "id": "48ff1f9fa51646b68d077c61f8bbb0cb",
+    "builtin": "focus-left",
+    "name": "Фокус окна · left",
+    "combo": "SUPER + left",
+    "kind": "standard"
+  },
+  {
+    "id": "2bf832cfc585bd6646e7e5ea1237ecdb",
+    "builtin": "move-left",
+    "name": "Переместить окно · left",
+    "combo": "SUPER + SHIFT + left",
+    "kind": "standard"
+  },
+  {
+    "id": "844ab3c87c0e5964c6f9eb071afad343",
+    "builtin": "focus-right",
+    "name": "Фокус окна · right",
+    "combo": "SUPER + right",
+    "kind": "standard"
+  },
+  {
+    "id": "899cade229ea9a9dfdcd0befbb066a71",
+    "builtin": "move-right",
+    "name": "Переместить окно · right",
+    "combo": "SUPER + SHIFT + right",
+    "kind": "standard"
+  },
+  {
+    "id": "8ca006d4deaae0d654a22a7319cc4883",
+    "builtin": "focus-up",
+    "name": "Фокус окна · up",
+    "combo": "SUPER + up",
+    "kind": "standard"
+  },
+  {
+    "id": "9d246d1b03e8a436dbf3ad910091a228",
+    "builtin": "move-up",
+    "name": "Переместить окно · up",
+    "combo": "SUPER + SHIFT + up",
+    "kind": "standard"
+  },
+  {
+    "id": "68a1fdbb4e984b12b37489061b1a7117",
+    "builtin": "focus-down",
+    "name": "Фокус окна · down",
+    "combo": "SUPER + down",
+    "kind": "standard"
+  },
+  {
+    "id": "dd6529452634b420f3fe729aa77eb084",
+    "builtin": "move-down",
+    "name": "Переместить окно · down",
+    "combo": "SUPER + SHIFT + down",
+    "kind": "standard"
+  },
+  {
+    "id": "89177d2d0f941a8618efe59061b6ec76",
+    "builtin": "workspace-1",
+    "name": "Рабочий стол 1",
+    "combo": "SUPER + 1",
+    "kind": "standard"
+  },
+  {
+    "id": "fadee7ebbaf579b6af9b4d9d58ff9798",
+    "builtin": "move-workspace-1",
+    "name": "Перенести окно на стол 1",
+    "combo": "SUPER + SHIFT + 1",
+    "kind": "standard"
+  },
+  {
+    "id": "2ca36ed4473e37d9c6191e32b78fdd9f",
+    "builtin": "workspace-2",
+    "name": "Рабочий стол 2",
+    "combo": "SUPER + 2",
+    "kind": "standard"
+  },
+  {
+    "id": "09562fded8772240d24f97614877a991",
+    "builtin": "move-workspace-2",
+    "name": "Перенести окно на стол 2",
+    "combo": "SUPER + SHIFT + 2",
+    "kind": "standard"
+  },
+  {
+    "id": "75c44aeb2be36cc5957911f0556ec8e6",
+    "builtin": "workspace-3",
+    "name": "Рабочий стол 3",
+    "combo": "SUPER + 3",
+    "kind": "standard"
+  },
+  {
+    "id": "333abb2d20688dc8fdee54ca07ce369d",
+    "builtin": "move-workspace-3",
+    "name": "Перенести окно на стол 3",
+    "combo": "SUPER + SHIFT + 3",
+    "kind": "standard"
+  },
+  {
+    "id": "4877a6f0d8edc32c42c4eb370bfbbafd",
+    "builtin": "workspace-4",
+    "name": "Рабочий стол 4",
+    "combo": "SUPER + 4",
+    "kind": "standard"
+  },
+  {
+    "id": "bda0d47518f4d981e7e3ba165abb539e",
+    "builtin": "move-workspace-4",
+    "name": "Перенести окно на стол 4",
+    "combo": "SUPER + SHIFT + 4",
+    "kind": "standard"
+  },
+  {
+    "id": "66bbf7efaf80e8647dfb691380b6eade",
+    "builtin": "workspace-5",
+    "name": "Рабочий стол 5",
+    "combo": "SUPER + 5",
+    "kind": "standard"
+  },
+  {
+    "id": "5432a2577360430e626396378e90b9fa",
+    "builtin": "move-workspace-5",
+    "name": "Перенести окно на стол 5",
+    "combo": "SUPER + SHIFT + 5",
+    "kind": "standard"
+  },
+  {
+    "id": "01a5bab4a8101daefdf56df6872dd743",
+    "builtin": "workspace-6",
+    "name": "Рабочий стол 6",
+    "combo": "SUPER + 6",
+    "kind": "standard"
+  },
+  {
+    "id": "3fa59acef5a71b8dfe5ac7532ab8cdbd",
+    "builtin": "move-workspace-6",
+    "name": "Перенести окно на стол 6",
+    "combo": "SUPER + SHIFT + 6",
+    "kind": "standard"
+  },
+  {
+    "id": "68586e8ef78549c1dadf9b559f59aefe",
+    "builtin": "workspace-7",
+    "name": "Рабочий стол 7",
+    "combo": "SUPER + 7",
+    "kind": "standard"
+  },
+  {
+    "id": "65c0ad561031311c4f50ec08fae009ff",
+    "builtin": "move-workspace-7",
+    "name": "Перенести окно на стол 7",
+    "combo": "SUPER + SHIFT + 7",
+    "kind": "standard"
+  },
+  {
+    "id": "c33d95f3896296558b9f032755057ef4",
+    "builtin": "workspace-8",
+    "name": "Рабочий стол 8",
+    "combo": "SUPER + 8",
+    "kind": "standard"
+  },
+  {
+    "id": "5eaaf1c11c16b795f514cad59bd004ee",
+    "builtin": "move-workspace-8",
+    "name": "Перенести окно на стол 8",
+    "combo": "SUPER + SHIFT + 8",
+    "kind": "standard"
+  },
+  {
+    "id": "1c33c65c0b0edf6d12e05d3420034fdb",
+    "builtin": "workspace-9",
+    "name": "Рабочий стол 9",
+    "combo": "SUPER + 9",
+    "kind": "standard"
+  },
+  {
+    "id": "deaba98090e067256967f2b86e05a691",
+    "builtin": "move-workspace-9",
+    "name": "Перенести окно на стол 9",
+    "combo": "SUPER + SHIFT + 9",
+    "kind": "standard"
+  },
+  {
+    "id": "cd9744e00d2fc2c9b962973998d48abb",
+    "builtin": "workspace-10",
+    "name": "Рабочий стол 10",
+    "combo": "SUPER + 0",
+    "kind": "standard"
+  },
+  {
+    "id": "8f76c0209ede9d784f09b60844f849af",
+    "builtin": "move-workspace-10",
+    "name": "Перенести окно на стол 10",
+    "combo": "SUPER + SHIFT + 0",
+    "kind": "standard"
+  },
+  {
+    "id": "0c8a847f50c556d25b5fcca5f72ea1a2",
+    "builtin": "layout",
+    "name": "Переключить раскладку",
+    "combo": "SUPER + space",
+    "kind": "standard"
+  },
+  {
+    "id": "3c5bf7d222cb4993767a5d7e8ad5e53e",
+    "builtin": "switch-next",
+    "name": "Следующее окно",
+    "combo": "ALT + Tab",
+    "kind": "standard"
+  },
+  {
+    "id": "8a4f6bf7899e794d433dd757c5a2f458",
+    "builtin": "switch-prev",
+    "name": "Предыдущее окно",
+    "combo": "ALT + SHIFT + Tab",
+    "kind": "standard"
+  }
+]

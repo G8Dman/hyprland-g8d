@@ -1,0 +1,76 @@
+/* Native desktop interpretation of Material You; all colors come from the active theme. */
+.g8d-settings { background: @md_surface; color: @md_on_surface; }
+.g8d-settings * { font-family: "Roboto", "Noto Sans", sans-serif; font-size: 14px; }
+.g8d-settings headerbar {
+    background: @md_surface; color: @md_on_surface; background-image: none;
+    border: none; box-shadow: none; padding: 8px 16px; min-height: 48px;
+}
+.g8d-settings headerbar .title { font-size: 16px; font-weight: 500; }
+.g8d-settings headerbar .subtitle { font-size: 12px; color: @md_on_surface_variant; }
+.g8d-settings .sidebar { padding: 16px 12px; background: transparent; border: none; }
+.g8d-settings .brand { color: @md_on_surface; font-size: 26px; font-weight: 500; padding: 0 16px; }
+.g8d-settings .sidebar > .muted { padding: 0 16px 12px; }
+.g8d-settings list, .g8d-settings viewport { background: transparent; border: none; }
+.g8d-settings .sidebar list row {
+    background: transparent; color: @md_on_surface_variant; border: none; border-radius: 28px; margin: 3px 0;
+}
+.g8d-settings .nav-item { padding: 14px 16px; min-height: 24px; }
+.g8d-settings .sidebar list row:hover { background: alpha(@md_primary, 0.08); }
+.g8d-settings .sidebar list row:selected { background: @md_primary_container; color: @md_on_surface; }
+.g8d-settings .sidebar list row:selected label { font-weight: 500; }
+.g8d-settings .sidebar list row:focus { outline: 2px solid @md_primary; outline-offset: -3px; }
+.g8d-settings .sidebar.compact { padding: 12px 8px; }
+.g8d-settings .sidebar.compact .nav-item { padding: 14px; }
+.g8d-settings .title { font-size: 32px; font-weight: 400; }
+.g8d-settings .section-heading { font-size: 15px; font-weight: 500; color: @md_primary; padding: 8px 4px 0; }
+.g8d-settings .muted { font-size: 13px; color: @md_on_surface_variant; }
+.g8d-settings .row-title { font-size: 15px; font-weight: 400; }
+.g8d-settings .settings-group { background: @md_container; border: none; border-radius: 20px; padding: 2px 0; }
+.g8d-settings .setting-row { background: transparent; border: none; padding: 16px 20px; border-radius: 0; }
+.g8d-settings .settings-group > .setting-row:not(:last-child) { border-bottom: 1px solid alpha(@md_outline, 0.28); }
+.g8d-settings .monitor-card { padding: 18px; }
+.g8d-settings .shortcut-list > .setting-row { background: @md_container; border-radius: 20px; padding: 18px; }
+.g8d-settings button {
+    background-image: none; background-color: @md_container_high; color: @md_on_surface;
+    border: 2px solid transparent; border-radius: 20px; padding: 8px 18px; min-height: 20px;
+    box-shadow: none; text-shadow: none; font-weight: 500;
+}
+.g8d-settings button:hover { background-color: mix(@md_container_high, @md_primary, 0.10); }
+.g8d-settings button:active { background-color: mix(@md_primary_container, @md_primary, 0.18); }
+.g8d-settings button:checked { background-color: @md_primary_container; }
+.g8d-settings button:focus { border-color: @md_primary; outline-width: 0; }
+.g8d-settings button:disabled { opacity: 0.45; }
+.g8d-settings button.suggested-action { background-color: @md_primary; color: @md_on_primary; }
+.g8d-settings button.suggested-action:hover { background-color: shade(@md_primary, 0.92); }
+.g8d-settings button.destructive-action { color: @md_error; background-color: alpha(@md_error, 0.09); }
+.g8d-settings button.icon-button, .g8d-settings headerbar button { background: transparent; padding: 8px; min-width: 24px; min-height: 24px; border-radius: 24px; }
+.g8d-settings headerbar button:hover { background-color: alpha(@md_primary, 0.1); }
+.g8d-settings entry, .g8d-settings spinbutton {
+    background: @md_container_high; color: @md_on_surface; border: 2px solid transparent;
+    border-radius: 12px; box-shadow: none; padding: 8px 12px; min-height: 22px;
+}
+.g8d-settings entry:focus, .g8d-settings spinbutton:focus { border-color: @md_primary; }
+.g8d-settings entry selection { background: @md_primary; color: @md_on_primary; }
+.g8d-settings spinbutton button { padding: 4px 8px; border-radius: 8px; }
+.g8d-settings combobox button { border-radius: 12px; padding: 8px 12px; }
+.g8d-settings switch { background: @md_container_high; border: 2px solid @md_outline; border-radius: 20px; min-width: 42px; min-height: 24px; padding: 2px; }
+.g8d-settings switch slider { background: @md_outline; background-image: none; border: none; box-shadow: none; border-radius: 16px; min-width: 18px; min-height: 18px; }
+.g8d-settings switch:checked { background: @md_primary; border-color: @md_primary; }
+.g8d-settings switch:checked slider { background: @md_on_primary; }
+.g8d-settings switch:focus { outline: 2px solid @md_primary; outline-offset: 3px; }
+.g8d-settings switch:disabled { opacity: 0.45; }
+.g8d-settings scale { padding: 12px 20px; }
+.g8d-settings scale trough { background: @md_container_high; min-height: 6px; border: none; border-radius: 3px; }
+.g8d-settings scale highlight { background: @md_primary; min-height: 6px; border: none; border-radius: 3px; }
+.g8d-settings scale slider { background: @md_primary; border: none; box-shadow: none; min-width: 18px; min-height: 18px; border-radius: 9px; }
+.g8d-settings scale:focus slider { box-shadow: 0 0 0 4px alpha(@md_primary, 0.2); }
+.g8d-settings .notice { background: @md_primary_container; color: @md_on_surface; border-radius: 14px; padding: 14px 18px; }
+.g8d-settings .error { color: @md_error; }
+.g8d-settings menu, .g8d-settings popover { background: @md_container; color: @md_on_surface; border-color: @md_outline; }
+.g8d-settings menuitem, .g8d-settings menuitem label { color: @md_on_surface; }
+.g8d-settings menuitem:hover { background: @md_primary_container; }
+.g8d-settings scrollbar { background: transparent; }
+.g8d-settings scrollbar slider { background: alpha(@md_outline, 0.6); border-radius: 8px; min-width: 4px; }
+.g8d-settings checkbutton check { background: @md_container; border: 2px solid @md_outline; border-radius: 4px; }
+.g8d-settings checkbutton check:checked { background: @md_primary; border-color: @md_primary; color: @md_on_primary; }
+.g8d-settings separator { background: alpha(@md_outline, 0.25); min-height: 1px; }

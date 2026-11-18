@@ -1,15 +1,16 @@
 -- g8d / graphite. Independent Hyprland 0.56 session.
 local root = (os.getenv("G8D_CONFIG_DIR") or (os.getenv("HOME") .. "/.config/hyprland-g8d")) .. "/"
+dofile(root .. "shortcuts-runtime.lua")
 local function cmd(action) return hl.dsp.exec_cmd(root .. "actions " .. action) end
 
--- Portable default; user display settings are loaded separately.
+-- Portable defaults; saved monitor settings are loaded below.
 hl.monitor({ output = "", mode = "preferred", position = "auto", scale = 1 })
 do
     local monitors_file = io.open(root .. "monitors.lua", "r")
     if monitors_file then monitors_file:close(); dofile(root .. "monitors.lua") end
 end
 -- Qt applications must read the complete KDE palette, including alternate rows.
--- Qt integration is selected by the session launcher.
+-- Qt integration is selected by the portable session launcher.
 hl.env("XCURSOR_SIZE", "24")
 hl.env("HYPRCURSOR_SIZE", "24")
 hl.config({
@@ -25,7 +26,7 @@ hl.config({
     },
     animations = { enabled = true },
     input = {
-        kb_layout = "us,ru", kb_options = "grp:win_space_toggle",
+        kb_layout = "us,ru", kb_options = "",
         follow_mouse = 1, sensitivity = 0,
         touchpad = { natural_scroll = false },
     },
@@ -37,35 +38,35 @@ for _, leaf in ipairs({"windows", "fade", "workspaces", "layers", "border"}) do
     hl.animation({ leaf = leaf, enabled = true, speed = 3, bezier = "g8d" })
 end
 hl.window_rule({name = "g8d-settings", match = {class = "^g8d-settings$"}, float = true, center = true, size = {"1060", "760"}})
-hl.bind("SUPER + CTRL + S", cmd("settings"))
-hl.bind("SUPER + T", cmd("terminal"))
-hl.bind("SUPER + Return", cmd("terminal"))
+g8d_bind("settings", "Настройки", "SUPER + CTRL + S", cmd("settings"))
+g8d_bind("terminal", "Терминал", "SUPER + T", cmd("terminal"))
+g8d_bind("terminal-return", "Терминал · Enter", "SUPER + Return", cmd("terminal"))
 dofile(root .. "window-switcher.lua")
-hl.bind("SUPER + E", cmd("files"))
-hl.bind("SUPER + B", cmd("browser"))
-hl.bind("SUPER + R", cmd("launcher"))
-hl.bind("SUPER + W", function() hl.exec_cmd(root .. "actions appearance") end)
-hl.bind("SUPER + D", cmd("launcher"))
-hl.bind("SUPER + Q", hl.dsp.window.close())
-hl.bind("CTRL + ALT + Escape", hl.dsp.exec_cmd("hyprctl kill"))
-hl.bind("SUPER + V", hl.dsp.window.float({action = "toggle"}))
-hl.bind("SUPER + F", hl.dsp.window.fullscreen())
-hl.bind("SUPER + J", hl.dsp.layout("togglesplit"))
-hl.bind("SUPER + L", cmd("lock"))
-hl.bind("SUPER + Escape", cmd("power"))
-hl.bind("SUPER + SHIFT + M", cmd("power"))
-hl.bind("SUPER + F1", cmd("help"))
-hl.bind("Print", cmd("screenshot"))
-hl.bind("SUPER + SHIFT + S", cmd("screenshot"))
-hl.bind("SUPER + S", hl.dsp.workspace.toggle_special("scratch"))
-hl.bind("SUPER + SHIFT + V", hl.dsp.window.move({workspace = "special:scratch"}))
+g8d_bind("files", "Файловый менеджер", "SUPER + E", cmd("files"))
+g8d_bind("browser", "Браузер", "SUPER + B", cmd("browser"))
+g8d_bind("launcher", "Поиск приложений", "SUPER + R", cmd("launcher"))
+g8d_bind("appearance", "Обои и оформление", "SUPER + W", function() hl.exec_cmd(root .. "actions appearance") end)
+g8d_bind("launcher-d", "Поиск приложений · D", "SUPER + D", cmd("launcher"))
+g8d_bind("close-window", "Закрыть окно", "SUPER + Q", hl.dsp.window.close())
+g8d_bind("xkill", "Завершить выбранное приложение", "CTRL + ALT + Escape", hl.dsp.exec_cmd("hyprctl kill"))
+g8d_bind("floating", "Плавающее окно", "SUPER + V", hl.dsp.window.float({action = "toggle"}))
+g8d_bind("fullscreen", "Полный экран", "SUPER + F", hl.dsp.window.fullscreen())
+g8d_bind("split", "Направление разделения окон", "SUPER + J", hl.dsp.layout("togglesplit"))
+g8d_bind("lock", "Блокировка", "SUPER + L", cmd("lock"))
+g8d_bind("power", "Меню питания", "SUPER + Escape", cmd("power"))
+g8d_bind("power-m", "Меню питания · M", "SUPER + SHIFT + M", cmd("power"))
+g8d_bind("help", "Памятка сочетаний", "SUPER + F1", cmd("help"))
+g8d_bind("screenshot", "Снимок экрана", "Print", cmd("screenshot"))
+g8d_bind("screenshot-s", "Снимок экрана · S", "SUPER + SHIFT + S", cmd("screenshot"))
+g8d_bind("scratch", "Скрытый рабочий стол", "SUPER + S", hl.dsp.workspace.toggle_special("scratch"))
+g8d_bind("move-scratch", "Перенести окно на скрытый стол", "SUPER + SHIFT + V", hl.dsp.window.move({workspace = "special:scratch"}))
 for _, direction in ipairs({"left", "right", "up", "down"}) do
-    hl.bind("SUPER + " .. direction, hl.dsp.focus({direction = direction}))
-    hl.bind("SUPER + SHIFT + " .. direction, hl.dsp.window.move({direction = direction}))
+    g8d_bind("focus-" .. direction, "Фокус окна · " .. direction, "SUPER + " .. direction, hl.dsp.focus({direction = direction}))
+    g8d_bind("move-" .. direction, "Переместить окно · " .. direction, "SUPER + SHIFT + " .. direction, hl.dsp.window.move({direction = direction}))
 end
 for i = 1, 10 do
-    hl.bind("SUPER + " .. i % 10, hl.dsp.focus({workspace = i}))
-    hl.bind("SUPER + SHIFT + " .. i % 10, hl.dsp.window.move({workspace = i}))
+    g8d_bind("workspace-" .. i, "Рабочий стол " .. i, "SUPER + " .. i % 10, hl.dsp.focus({workspace = i}))
+    g8d_bind("move-workspace-" .. i, "Перенести окно на стол " .. i, "SUPER + SHIFT + " .. i % 10, hl.dsp.window.move({workspace = i}))
 end
 -- Step through workspace numbers, creating empty workspaces on demand.
 local function step_workspace(direction)
@@ -73,20 +74,21 @@ local function step_workspace(direction)
     local target = math.max(1, (current and math.max(1, current.id) or 1) + direction)
     hl.dispatch(hl.dsp.focus({workspace = target}))
 end
-hl.bind("SUPER + mouse_down", function() step_workspace(1) end)
-hl.bind("SUPER + mouse_up", function() step_workspace(-1) end)
-hl.bind("SUPER + mouse:272", hl.dsp.window.drag(), {mouse = true})
-hl.bind("SUPER + mouse:273", hl.dsp.window.resize(), {mouse = true})
-hl.bind("XF86AudioRaiseVolume", hl.dsp.exec_cmd("wpctl set-volume -l 1 @DEFAULT_AUDIO_SINK@ 5%+"), {locked = true, repeating = true})
-hl.bind("XF86AudioLowerVolume", hl.dsp.exec_cmd("wpctl set-volume @DEFAULT_AUDIO_SINK@ 5%-"), {locked = true, repeating = true})
-hl.bind("XF86AudioMute", hl.dsp.exec_cmd("wpctl set-mute @DEFAULT_AUDIO_SINK@ toggle"), {locked = true})
-hl.bind("XF86AudioMicMute", hl.dsp.exec_cmd("wpctl set-mute @DEFAULT_AUDIO_SOURCE@ toggle"), {locked = true})
-hl.bind("XF86MonBrightnessUp", hl.dsp.exec_cmd("brightnessctl set 5%+"), {locked = true, repeating = true})
-hl.bind("XF86MonBrightnessDown", hl.dsp.exec_cmd("brightnessctl set 5%-"), {locked = true, repeating = true})
-hl.bind("XF86AudioPlay", hl.dsp.exec_cmd("playerctl play-pause"), {locked = true})
-hl.bind("XF86AudioNext", hl.dsp.exec_cmd("playerctl next"), {locked = true})
-hl.bind("XF86AudioPrev", hl.dsp.exec_cmd("playerctl previous"), {locked = true})
+g8d_bind("workspace-next", "Следующий рабочий стол", "SUPER + mouse_down", function() step_workspace(1) end)
+g8d_bind("workspace-prev", "Предыдущий рабочий стол", "SUPER + mouse_up", function() step_workspace(-1) end)
+g8d_bind("drag-window", "Перетаскивание окна мышью", "SUPER + mouse:272", hl.dsp.window.drag(), {mouse = true})
+g8d_bind("resize-window", "Размер окна мышью", "SUPER + mouse:273", hl.dsp.window.resize(), {mouse = true})
+g8d_bind("volume-up", "Увеличить громкость", "XF86AudioRaiseVolume", hl.dsp.exec_cmd("wpctl set-volume -l 1 @DEFAULT_AUDIO_SINK@ 5%+"), {locked = true, repeating = true})
+g8d_bind("volume-down", "Уменьшить громкость", "XF86AudioLowerVolume", hl.dsp.exec_cmd("wpctl set-volume @DEFAULT_AUDIO_SINK@ 5%-"), {locked = true, repeating = true})
+g8d_bind("volume-mute", "Выключить звук", "XF86AudioMute", hl.dsp.exec_cmd("wpctl set-mute @DEFAULT_AUDIO_SINK@ toggle"), {locked = true})
+g8d_bind("mic-mute", "Выключить микрофон", "XF86AudioMicMute", hl.dsp.exec_cmd("wpctl set-mute @DEFAULT_AUDIO_SOURCE@ toggle"), {locked = true})
+g8d_bind("brightness-up", "Увеличить яркость", "XF86MonBrightnessUp", hl.dsp.exec_cmd("brightnessctl set 5%+"), {locked = true, repeating = true})
+g8d_bind("brightness-down", "Уменьшить яркость", "XF86MonBrightnessDown", hl.dsp.exec_cmd("brightnessctl set 5%-"), {locked = true, repeating = true})
+g8d_bind("media-play", "Воспроизведение / пауза", "XF86AudioPlay", hl.dsp.exec_cmd("playerctl play-pause"), {locked = true})
+g8d_bind("media-next", "Следующий трек", "XF86AudioNext", hl.dsp.exec_cmd("playerctl next"), {locked = true})
+g8d_bind("media-prev", "Предыдущий трек", "XF86AudioPrev", hl.dsp.exec_cmd("playerctl previous"), {locked = true})
 hl.window_rule({name = "g8d-no-maximize", match = {class = ".*"}, suppress_event = "maximize"})
 dofile(root .. "file-dialogs.lua")
 dofile(root .. "accent.lua")
 hl.on("hyprland.start", function() hl.exec_cmd(root .. "autostart") end)
+g8d_bind("layout", "Переключить раскладку", "SUPER + space", hl.dsp.exec_cmd("hyprctl switchxkblayout all next"))

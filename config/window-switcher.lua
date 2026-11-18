@@ -1,7 +1,7 @@
 -- Quick Alt+Tab commits the previous window; holding both keys shows a chooser.
 local cycle, timer = nil, nil
 local sequence = os.time() * 1000
-local sender = os.getenv("HOME") .. "/.config/hyprland-g8d/plugins/switcher-ipc.py"
+local sender = (os.getenv("G8D_CONFIG_DIR") or (os.getenv("HOME") .. "/.config/hyprland-g8d")) .. "/plugins/switcher-ipc.py"
 local function menu(show)
     sequence = sequence + 1
     local args = " " .. sequence .. " " .. (show and cycle.index or 0)
@@ -48,12 +48,29 @@ local function switch_window(reverse)
         end, { timeout = 250, type = "oneshot" })
     end
 end
-hl.bind("ALT + Tab", function() switch_window(false) end)
-hl.bind("ALT + SHIFT + Tab", function() switch_window(true) end)
-hl.bind("Tab", stop_timer, { release = true, ignore_mods = true, non_consuming = true })
-for _, key in ipairs({"Alt_L", "Alt_R"}) do
-    hl.bind("ALT + " .. key, function() g8d_switch_commit() end,
-        { release = true, ignore_mods = true, transparent = true })
+g8d_bind("switch-next", "Следующее окно", "ALT + Tab", function() switch_window(false) end)
+g8d_bind("switch-prev", "Предыдущее окно", "ALT + SHIFT + Tab", function() switch_window(true) end)
+-- Keep release observers in sync when the chooser shortcuts are reassigned.
+local observed_keys, observed_mods = {}, {}
+local modifier_keys = { ALT = {"Alt_L", "Alt_R"}, CTRL = {"Control_L", "Control_R"}, SUPER = {"Super_L", "Super_R"} }
+for _, id in ipairs({"switch-next", "switch-prev"}) do
+    if g8d_standard_active(id) then
+        local combo = g8d_standard_combo(id)
+        local key = combo:match("([^ +]+)%s*$")
+        if not observed_keys[key] then
+            observed_keys[key] = true
+            hl.bind(key, stop_timer, { release = true, ignore_mods = true, non_consuming = true })
+        end
+        for mod, keys in pairs(modifier_keys) do
+            if combo:find(mod .. " +", 1, true) and not observed_mods[mod] then
+                observed_mods[mod] = true
+                for _, release_key in ipairs(keys) do
+                    hl.bind(mod .. " + " .. release_key, function() g8d_switch_commit() end,
+                        { release = true, ignore_mods = true, transparent = true })
+                end
+            end
+        end
+    end
 end
 hl.bind("Escape", function()
     if cycle then stop_timer(); menu(false); cycle = nil end

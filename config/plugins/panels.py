@@ -24,6 +24,7 @@ from window_switcher import WindowSwitcher
 from calendar_sync import CalendarSync
 from dashboard import Dashboard
 from fullscreen_guard import FullscreenGuard
+from quick_settings import QuickSettings
 from cursor_fracture import Fracture
 
 ROOT = Path(__file__).resolve().parent
@@ -84,6 +85,7 @@ class Popup:
         self.app, self.index, self.kind = app, index, kind
         self.monitor = monitor
         self.dashboard = None
+        self.quick_settings = None
         self.inside = set()
         self.close_timer = 0
         self.open_timer = 0
@@ -96,23 +98,17 @@ class Popup:
         self.data = {}
         self.window = self.surface(monitor, f'g8d-{kind}', popup=True)
         self.dashboard_width = min(820, monitor.get_geometry().width - 48)
-        self.window.set_size_request(340 if kind == 'profile' else self.dashboard_width, -1)
+        self.window.set_size_request(360 if kind == 'profile' else self.dashboard_width, -1)
         Layer.set_margin(self.window, Layer.Edge.TOP, 36)
         if kind == 'profile':
             Layer.set_anchor(self.window, Layer.Edge.RIGHT, True)
-            Layer.set_margin(self.window, Layer.Edge.RIGHT, 0)
-        scroller = Gtk.ScrolledWindow()
-        scroller.set_policy(Gtk.PolicyType.NEVER, Gtk.PolicyType.AUTOMATIC)
-        scroller.set_propagate_natural_height(True)
-        content_height = max(180, min(650 if kind == 'profile' else 680, monitor.get_geometry().height - 54))
-        scroller.set_min_content_height(content_height)
-        scroller.set_max_content_height(content_height)
+            Layer.set_margin(self.window, Layer.Edge.RIGHT, 8)
+            Layer.set_margin(self.window, Layer.Edge.TOP, 44)
         self.body = box(spacing=12)
         self.body.get_style_context().add_class('body')
-        if kind == 'profile': scroller.add(self.body)
         popup_area = Gtk.EventBox()
         popup_area.set_visible_window(True)
-        popup_area.add(scroller if kind == 'profile' else self.body)
+        popup_area.add(self.body)
         self.window.add(popup_area)
         self.bind_pointer(popup_area, 'popup')
         self.trigger = self.surface(monitor, f'g8d-trigger-{kind}', popup=False)
@@ -189,9 +185,10 @@ class Popup:
     def click(self, _, event):
         if self.blocked(): return True
         if event.button == 1:
-            if self.kind == 'profile': self.launch([str(ROOT.parent / 'actions'), 'power'])
-            elif self.window.get_visible(): self.hide()
+            if self.window.get_visible(): self.hide()
             else: self.show()
+        elif event.button == 3 and self.kind == 'profile':
+            self.launch([str(ROOT.parent / 'actions'), 'power'])
         return True
 
     def show(self):
@@ -235,9 +232,10 @@ class Popup:
             self.dashboard.update(data)
             self.body.show_all()
             return
-        for child in self.body.get_children(): child.destroy()
-        if self.kind == 'profile': self.render_profile(data)
-        else: self.render_dashboard(data)
+        if self.quick_settings is None:
+            self.quick_settings = QuickSettings(self)
+            self.body.pack_start(self.quick_settings.root, False, False, 0)
+        self.quick_settings.update(data)
         self.body.show_all()
 
     def brightness_changed(self, scale, output, value_label):
@@ -261,89 +259,6 @@ class Popup:
         except OSError:
             switch.set_active(self.app.fracture.enabled)
             self.app.notify('Не удалось сохранить настройку эффекта курсора')
-
-    def render_profile(self, data):
-        self.section('ПРОФИЛЬ')
-        head = box(False, 14)
-        name = data.get('name', self.app.collector.user['name'])
-        avatar = data.get('avatar', self.app.collector.user['avatar'])
-        if avatar:
-            try: image = Gtk.Image.new_from_pixbuf(GdkPixbuf.Pixbuf.new_from_file_at_scale(avatar, 64, 64, True))
-            except GLib.Error: image = initials_avatar(name)
-        else: image = initials_avatar(name)
-        head.pack_start(image, False, False, 0)
-        info = box(spacing=4)
-        info.pack_start(label(name, 'title'), False, False, 0)
-        info.pack_start(label(f"{data.get('user', self.app.collector.user['user'])}@{data.get('host', self.app.collector.user['host'])}", 'muted'), False, False, 0)
-        head.pack_start(info, True, True, 0)
-        self.body.pack_start(head, False, False, 0)
-        self.body.pack_start(label(data.get('os', self.app.collector.user['os']), 'muted'), False, False, 0)
-        minutes = data.get('uptime', 0) // 60
-        row(self.body, 'Сессия', 'hyprland-g8d')
-        row(self.body, 'Время работы ПК', f'{minutes // 60} ч {minutes % 60} мин')
-        effects = box(False)
-        effects.pack_start(label('Эффект перехода курсора'), True, True, 0)
-        switch = Gtk.Switch()
-        switch.set_active(self.app.fracture.enabled)
-        switch.set_valign(Gtk.Align.CENTER)
-        switch.connect('notify::active', self.cursor_effect_changed)
-        effects.pack_end(switch, False, False, 0)
-        self.body.pack_start(effects, False, False, 0)
-        self.body.pack_start(button('Настройки g8d', lambda: self.launch([str(ROOT.parent / 'actions'), 'settings'])), False, False, 0)
-        self.section('ЯРКОСТЬ ЭКРАНОВ')
-        self.brightness_scales = {}
-        for monitor in data.get('brightness', []):
-            output = monitor['output']
-            percent = self.app.brightness_overrides.get(output, monitor['percent'])
-            value_label = row(self.body, monitor['title'], f'{percent}%')
-            scale = Gtk.Scale.new_with_range(Gtk.Orientation.HORIZONTAL, 1, 100, 1)
-            scale.set_draw_value(False)
-            scale.set_value(percent)
-            scale.set_sensitive(monitor['enabled'])
-            scale.connect('value-changed', self.brightness_changed, output, value_label)
-            scale.connect('button-press-event', lambda *_: self.brightness_pointer(True))
-            scale.connect('button-release-event', lambda *_: self.brightness_pointer(False))
-            self.brightness_scales[output] = scale
-            self.body.pack_start(scale, False, False, 0)
-            if not monitor['enabled']:
-                self.body.pack_start(label('Управление недоступно · проверь DDC/CI в меню монитора', 'muted', True), False, False, 0)
-        if not data.get('brightness'):
-            self.body.pack_start(label('Определяю мониторы…', 'muted'), False, False, 0)
-        self.section('ИГРОВОЙ РЕЖИМ')
-        enabled = self.app.game_state.get('enabled', False)
-        toggle = button('Выключить игровой режим' if enabled else 'Включить игровой режим', self.app.toggle_game)
-        toggle.set_sensitive(not self.app.game_pending)
-        self.body.pack_start(toggle, False, False, 0)
-        description = 'Лёгкая панель · без обоев, анимаций и теней' if enabled else 'Освобождает память компонентов рабочего стола'
-        self.body.pack_start(label(description, 'muted', True), False, False, 0)
-        if enabled:
-            released = self.app.game_state.get('released_component_pss_mib', 0)
-            row(self.body, 'Выгруженные компоненты', f'~{released:.0f} MiB', 'muted')
-        if 'ram_used' in data: row(self.body, 'RAM всей системы', f"{data['ram_used']:.2f} GiB", 'muted')
-        self.section('WI-FI')
-        state = data.get('wifi', 'unavailable')
-        row(self.body, 'Радиомодуль', {'enabled': 'Включён', 'disabled': 'Выключен'}.get(state, 'Недоступен'))
-        for connection in data.get('connections', []):
-            self.body.pack_start(label(f"{connection['interface']} · {connection['connection'] or connection['state']}", 'muted', True), False, False, 0)
-        wifi = box(False)
-        toggle = button('Выключить' if state == 'enabled' else 'Включить',
-                        lambda state=state: self.app.action(['nmcli', 'radio', 'wifi', 'off' if state == 'enabled' else 'on']))
-        toggle.set_sensitive(state in ('enabled', 'disabled'))
-        wifi.pack_start(toggle, False, False, 0)
-        wifi.pack_start(button('Настройки Wi-Fi', lambda: self.launch(['nm-connection-editor'])), True, True, 0)
-        self.body.pack_start(wifi, False, False, 0)
-        self.section('BLUETOOTH')
-        state = data.get('bluetooth', 'unavailable')
-        row(self.body, 'Адаптер', {'on': 'Включён', 'off': 'Выключен'}.get(state, 'Недоступен'))
-        devices = data.get('bluetooth_devices', [])
-        self.body.pack_start(label(', '.join(devices) if devices else 'Нет подключённых устройств', 'muted', True), False, False, 0)
-        bluetooth = box(False)
-        toggle = button('Выключить' if state == 'on' else 'Включить',
-                        lambda state=state: self.app.action(['bluetoothctl', 'power', 'off' if state == 'on' else 'on']))
-        toggle.set_sensitive(state in ('on', 'off'))
-        bluetooth.pack_start(toggle, False, False, 0)
-        bluetooth.pack_start(button('Настройки Bluetooth', lambda: self.launch(['blueman-manager'])), True, True, 0)
-        self.body.pack_start(bluetooth, False, False, 0)
 
     def render_music(self, data, parent):
         players = data.get('media', [])
@@ -452,6 +367,10 @@ class App:
         self.css = css
         css.load_from_path(str(appearance.ROOT / 'plugins/style.css'))
         Gtk.StyleContext.add_provider_for_screen(Gdk.Screen.get_default(), css, Gtk.STYLE_PROVIDER_PRIORITY_APPLICATION)
+        Gtk.IconTheme.get_default().prepend_search_path(str(ROOT / 'icons'))
+        self.quick_css = Gtk.CssProvider()
+        self.quick_css.load_from_path(str(ROOT / 'quick-settings.css'))
+        Gtk.StyleContext.add_provider_for_screen(Gdk.Screen.get_default(), self.quick_css, Gtk.STYLE_PROVIDER_PRIORITY_APPLICATION + 1)
         self.display = Gdk.Display.get_default()
         self.display.connect('monitor-added', lambda *_: self.monitors_changed())
         self.display.connect('monitor-removed', lambda *_: self.monitors_changed())
@@ -615,15 +534,21 @@ class App:
     def notify(self, text):
         subprocess.Popen(['notify-send', 'g8d', text])
 
-    def action(self, command, timeout=8):
+    def action(self, command, timeout=8, done=None):
+        def finished(error):
+            if error: self.notify(error)
+            if done: done(error)
+            self.refresh()
+            return False
         def work():
+            error = ''
             try:
                 result = subprocess.run(command, capture_output=True, text=True, timeout=timeout)
                 if result.returncode:
-                    GLib.idle_add(self.notify, result.stderr.strip() or result.stdout.strip() or 'Действие не выполнено')
+                    error = result.stderr.strip() or result.stdout.strip() or 'Действие не выполнено'
             except (OSError, subprocess.SubprocessError) as exc:
-                GLib.idle_add(self.notify, str(exc))
-            GLib.idle_add(self.refresh)
+                error = str(exc)
+            GLib.idle_add(finished, error)
         self.action_pool.submit(work)
 
     def music_command(self, command, message, timeout=100):
