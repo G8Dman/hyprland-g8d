@@ -4,7 +4,7 @@
 
 Минималистичная оболочка на Hyprland: интерфейс Material You и Nothing, панель Clear или Graphite, палитра из обоев,
 меню по наведению, отдельное приложение настроек и собственная сессия входа.
-Текущий предварительный выпуск — `v0.2.0-alpha.2`, не стабильная версия.
+Текущий предварительный выпуск — `v0.2.0-alpha.3`.
 
 ## Обновление из настроек
 
@@ -14,6 +14,11 @@
 Это обновляет оболочку g8d; системный Hyprland и пакеты через кнопку не обновляются.
 
 В `v0.1.0-alpha.1` кнопки ещё нет — один раз запусти команду установки ниже.
+
+## Новое в v0.2.0-alpha.3
+
+- Верхняя панель, меню, уведомления и служба автоблокировки запускаются независимо от обоев. При ошибке оболочка пробует встроенное изображение, затем однотонный фон.
+- Установщик проверяет собранную конфигурацию перед установкой и откатывает изменения при ошибке.
 
 ## Новое в v0.2.0-alpha.2
 
@@ -44,7 +49,7 @@
 Запускай из терминала **обычным пользователем**, без `sudo` перед всей командой:
 
 ```bash
-curl -fsSL -o /tmp/g8d-bootstrap.sh https://raw.githubusercontent.com/G8Dman/hyprland-g8d/v0.2.0-alpha.2/bootstrap.sh && bash /tmp/g8d-bootstrap.sh
+curl -fsSL -o /tmp/g8d-bootstrap.sh https://raw.githubusercontent.com/G8Dman/hyprland-g8d/v0.2.0-alpha.3/bootstrap.sh && bash /tmp/g8d-bootstrap.sh
 ```
 
 Нужны интернет, `curl`, `tar`, `bash` и доступ к `sudo`. Команда сохраняет скрипт во временный файл и запускает его через `bash`, поэтому она работает в `bash`, `zsh` и `fish`.
@@ -64,7 +69,7 @@ curl -fsSL -o /tmp/g8d-bootstrap.sh https://raw.githubusercontent.com/G8Dman/hyp
 ```bash
 git clone https://github.com/G8Dman/hyprland-g8d.git
 cd hyprland-g8d
-git checkout v0.2.0-alpha.2
+git checkout v0.2.0-alpha.3
 bash install.sh --dry-run
 bash install.sh
 ```

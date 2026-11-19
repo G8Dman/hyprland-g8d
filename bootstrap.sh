@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 set -euo pipefail
-ref=${G8D_REF:-v0.2.0-alpha.2}
+ref=${G8D_REF:-v0.2.0-alpha.3}
 [[ $ref =~ ^[A-Za-z0-9._-]+$ ]] || { echo 'Invalid release tag.' >&2; exit 2; }
 work=$(mktemp -d)
 trap 'rm -rf -- "$work"' EXIT
