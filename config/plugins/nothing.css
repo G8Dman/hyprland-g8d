@@ -1,0 +1,118 @@
+/* Nothing: monochrome instrument surfaces. Tokens are supplied for both modes. */
+window.g8d-popup, window.g8d-popup.material-dashboard, window.g8d-popup.quick-profile {
+    background-color: @nd_bg; color: @nd_text; border: 1px solid @nd_border;
+    border-radius: 16px; box-shadow: none;
+}
+.g8d-popup *, .g8d-settings * { font-family: "Space Grotesk", "Roboto", sans-serif; font-size: 14px; font-weight: 400; }
+.g8d-popup .muted, .g8d-settings .muted { color: @nd_muted; font-size: 12px; }
+.g8d-popup .heading, .g8d-settings .section-heading {
+    color: @nd_muted; font-family: "Space Mono", "DejaVu Sans Mono", monospace;
+    font-size: 12px; font-weight: 400; letter-spacing: 1px;
+}
+.g8d-popup .value, .g8d-popup .process { color: @nd_text; font-family: "Space Mono", "DejaVu Sans Mono", monospace; font-size: 12px; }
+.g8d-popup .body, .material-dashboard .body { padding: 24px; }
+.g8d-popup .dashboard-card { padding: 0; background: transparent; border: none; }
+.g8d-popup .title { font-size: 24px; color: @nd_display; font-weight: 500; }
+.g8d-popup .instrument-label { font-family: "Space Mono", monospace; font-size: 12px; color: @nd_muted; letter-spacing: 1px; }
+.g8d-popup .instrument-value { font-family: "Doto", monospace; font-size: 48px; font-weight: 500; color: @nd_display; }
+.material-dashboard stackswitcher { background: transparent; border: 1px solid @nd_border; border-radius: 8px; padding: 3px; }
+.material-dashboard stackswitcher button {
+    background: transparent; color: @nd_muted; border-radius: 5px; padding: 10px 20px;
+    border: 1px solid transparent; box-shadow: none;
+}
+.material-dashboard stackswitcher button label { font-family: "Space Mono", "DejaVu Sans Mono", monospace; font-size: 12px; color: @nd_muted; font-weight: 400; }
+.material-dashboard stackswitcher button:checked { background: @nd_text; color: @nd_bg; border-color: @nd_text; box-shadow: none; }
+.material-dashboard stackswitcher button:checked label { color: @nd_bg; }
+.g8d-popup button, .g8d-settings button {
+    background-image: none; background-color: transparent; color: @nd_text;
+    border: 1px solid @nd_border; border-radius: 8px; box-shadow: none; text-shadow: none;
+    padding: 10px 16px; min-height: 22px; font-weight: 400;
+}
+.g8d-popup button label, .g8d-settings button label { font-family: "Space Mono", "DejaVu Sans Mono", monospace; font-size: 12px; font-weight: 400; }
+.g8d-popup button:hover, .g8d-settings button:hover { background: @nd_control; border-color: @nd_muted; }
+.g8d-popup button:active, .g8d-settings button:active { background: @nd_selection; border-color: @nd_text; }
+.g8d-popup button:focus, .g8d-settings button:focus { border-color: @nd_text; outline: none; }
+.g8d-popup button:disabled, .g8d-settings button:disabled { opacity: 0.4; }
+.g8d-settings button.suggested-action { background: @nd_text; color: @nd_bg; border-color: @nd_text; border-radius: 24px; }
+.g8d-settings button.suggested-action label { color: @nd_bg; }
+.g8d-settings button.suggested-action:hover { background: @nd_display; color: @nd_bg; }
+.g8d-settings button.destructive-action { color: @nd_signal; background: transparent; border-color: @nd_signal; }
+.g8d-settings headerbar button, .g8d-settings button.icon-button { border-color: transparent; background: transparent; border-radius: 8px; }
+.g8d-settings headerbar button:hover { background: @nd_control; }
+.material-dashboard calendar { background: @nd_surface; color: @nd_text; padding: 14px; border-radius: 12px; }
+.material-dashboard calendar.header { background: transparent; color: @nd_text; }
+.material-dashboard calendar:selected { background: @nd_text; color: @nd_bg; border-radius: 4px; }
+.material-dashboard calendar.highlight { color: @nd_text; }
+.g8d-popup entry, .g8d-settings entry, .g8d-settings spinbutton {
+    background: @nd_control; color: @nd_text; border: 1px solid @nd_border;
+    border-radius: 8px; box-shadow: none; caret-color: @nd_text; padding: 10px 12px;
+}
+.g8d-popup entry:focus, .g8d-settings entry:focus, .g8d-settings spinbutton:focus { border-color: @nd_text; }
+.g8d-popup entry selection, .g8d-settings entry selection { background: @nd_text; color: @nd_bg; }
+.g8d-popup separator, .g8d-settings separator { background: @nd_border; }
+.g8d-popup scale trough, .g8d-settings scale trough { background: @nd_border; border: none; border-radius: 0; min-height: 4px; }
+.g8d-popup scale highlight, .g8d-settings scale highlight { background: @nd_text; border-radius: 0; }
+.g8d-popup scale slider, .g8d-settings scale slider { background: @nd_text; border-color: @nd_text; border-radius: 2px; min-width: 8px; min-height: 16px; box-shadow: none; }
+.g8d-popup scale:focus slider, .g8d-settings scale:focus slider { box-shadow: none; outline: 1px solid @nd_text; outline-offset: 3px; }
+.g8d-popup switch, .g8d-settings switch { background: @nd_border; border: 1px solid @nd_border; border-radius: 20px; }
+.g8d-popup switch slider, .g8d-settings switch slider { background: @nd_muted; border: none; box-shadow: none; }
+.g8d-popup switch:checked, .g8d-settings switch:checked { background: @nd_text; border-color: @nd_text; }
+.g8d-popup switch:checked slider, .g8d-settings switch:checked slider { background: @nd_bg; }
+.g8d-popup .error, .g8d-settings .error { color: @nd_signal; }
+/* The compact quick-settings geometry and accessible icon names stay intact. */
+.g8d-popup.quick-profile .body { padding: 16px; }
+.g8d-popup.quick-profile button { padding: 0; min-height: 0; border: 1px solid transparent; }
+.g8d-popup.quick-profile button.quick-tile, .g8d-popup.quick-profile button.quick-detail { background: @nd_surface; border-color: @nd_border; border-radius: 8px; }
+.g8d-popup.quick-profile button.quick-icon { border-radius: 24px; }
+.g8d-popup.quick-profile button.quick-tile:checked { background: @nd_text; color: @nd_bg; border-color: @nd_text; }
+.g8d-popup.quick-profile button.quick-tile:checked:hover { background: @nd_display; }
+.g8d-popup.quick-profile button:hover { background: @nd_control; border-color: @nd_muted; }
+.g8d-popup.quick-profile button:focus { border-color: @nd_text; }
+.g8d-popup.quick-profile .quick-name { font-family: "Space Mono", "DejaVu Sans Mono", monospace; font-size: 14px; font-weight: 400; }
+.g8d-popup.quick-profile .quick-footer, .g8d-popup.quick-profile .quick-percent { color: @nd_muted; font-size: 12px; }
+.g8d-popup.quick-profile .quick-error { color: @nd_signal; }
+/* Settings: technical manual hierarchy, one page title, no decorative cards. */
+.g8d-settings { background: @nd_bg; color: @nd_text; }
+.g8d-settings headerbar { background: @nd_bg; color: @nd_text; border: none; box-shadow: none; }
+.g8d-settings headerbar .title { font-size: 14px; font-weight: 400; }
+.g8d-settings .title { font-size: 36px; font-weight: 400; color: @nd_display; }
+.g8d-settings .brand { font-family: "Space Mono", "DejaVu Sans Mono", monospace; font-size: 14px; color: @nd_text; font-weight: 400; }
+.g8d-settings .row-title { font-size: 14px; font-weight: 400; }
+.g8d-settings .section-heading { padding-top: 24px; }
+.g8d-settings .settings-group { background: transparent; border: 1px solid @nd_border; border-radius: 12px; }
+.g8d-settings .setting-row { padding: 16px 20px; }
+.g8d-settings .settings-group > .setting-row:not(:last-child) { border-color: @nd_border; }
+.g8d-settings .sidebar list row { background: transparent; color: @nd_muted; border-radius: 6px; border: 1px solid transparent; }
+.g8d-settings .sidebar list row:hover { background: @nd_surface; }
+.g8d-settings .sidebar list row:selected { background: @nd_surface; color: @nd_text; border-color: @nd_border; }
+.g8d-settings .sidebar list row:selected label { color: @nd_text; font-weight: 400; }
+.g8d-settings .sidebar list row:focus { outline: 1px solid @nd_text; }
+.g8d-settings combobox button { border-radius: 8px; }
+.g8d-settings .notice { background: transparent; color: @nd_text; border: 1px solid @nd_border; border-radius: 8px; font-family: "Space Mono", monospace; font-size: 12px; }
+.g8d-settings menu, .g8d-settings popover, .g8d-popup menu, .g8d-popup popover { background: @nd_surface; color: @nd_text; border-color: @nd_border; box-shadow: none; }
+.g8d-settings menuitem, .g8d-settings menuitem label { color: @nd_text; }
+.g8d-settings menuitem:hover { background: @nd_selection; }
+.g8d-settings checkbutton check { background: @nd_surface; border-color: @nd_border; }
+.g8d-settings checkbutton check:checked { background: @nd_text; border-color: @nd_text; color: @nd_bg; }
+.g8d-settings scrollbar slider, .g8d-popup scrollbar slider { background: @nd_border; }
+
+/* Music: compact editorial hierarchy, flat monochrome controls and exact times. */
+.material-dashboard .music-view .media-source { font-family: "Space Mono", "DejaVu Sans Mono", monospace; font-size: 12px; color: @nd_muted; letter-spacing: 1px; }
+.material-dashboard .music-view .media-title { font-family: "Space Grotesk", "Roboto", sans-serif; font-size: 24px; font-weight: 500; color: @nd_display; }
+.material-dashboard .music-view .media-artist { font-family: "Space Grotesk", "Roboto", sans-serif; font-size: 14px; color: @nd_text; }
+.material-dashboard .music-view .media-status, .material-dashboard .music-view .media-time { font-family: "Space Mono", "DejaVu Sans Mono", monospace; font-size: 12px; color: @nd_muted; }
+.material-dashboard .music-view .media-art { background: @nd_surface; border-radius: 4px; color: @nd_muted; }
+.material-dashboard .music-view button.media-icon { padding: 0; min-height: 0; border: 1px solid transparent; border-radius: 24px; background: transparent; color: @nd_text; }
+.material-dashboard .music-view button.media-icon:hover { background: @nd_control; border-color: @nd_border; }
+.material-dashboard .music-view button.media-play { padding: 0; min-height: 0; border-radius: 30px; border: 1px solid @nd_text; background: @nd_text; color: @nd_bg; }
+.material-dashboard .music-view button.media-play:hover { background: @nd_display; }
+.material-dashboard .music-view button.media-seek { background: transparent; color: @nd_muted; border-color: transparent; padding: 0 8px; min-height: 36px; }
+.material-dashboard .music-view button.media-seek:hover { color: @nd_text; border-color: @nd_border; }
+.material-dashboard .music-view button.media-preset { background: transparent; border: 1px solid @nd_border; border-radius: 8px; }
+.material-dashboard .music-view button.media-preset:hover { background: @nd_control; border-color: @nd_muted; }
+.material-dashboard .music-view button.media-launch { background: transparent; color: @nd_text; border: 1px solid @nd_border; border-radius: 8px; padding: 8px 12px; }
+.material-dashboard .music-view button:focus { border-color: @nd_text; }
+.material-dashboard .music-view .media-progress trough { min-height: 3px; background: @nd_border; border: none; border-radius: 0; }
+.material-dashboard .music-view .media-progress progress { min-height: 3px; background: @nd_text; border: none; border-radius: 0; }
+.material-dashboard .music-view .media-notice { font-family: "Space Mono", "DejaVu Sans Mono", monospace; font-size: 12px; color: @nd_muted; }
+.material-dashboard .music-view .media-notice.error { color: @nd_signal; }

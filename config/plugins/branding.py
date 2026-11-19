@@ -30,7 +30,7 @@ def apply(root=ROOT,live=True):
         atomic(waybar,json.dumps(data,ensure_ascii=False,indent=2)+'\n')
     lock=root/'hyprlock.conf'
     if lock.exists():
-        atomic(lock,re.sub(r'(?m)^(\s*text\s*=\s*).*/ (graphite|clear)\s*$',lambda m:m[1]+label+' / '+m[2],lock.read_text()))
+        atomic(lock,re.sub(r'(?m)^(\s*text\s*=\s*).*/ (graphite|clear|nothing)\s*$',lambda m:m[1]+label+' / '+m[2],lock.read_text()))
     if live:
         runtime=Path(os.environ.get('XDG_RUNTIME_DIR','/tmp'))
         address=runtime/f"g8d-panels-{os.getuid()}-{os.environ.get('HYPRLAND_INSTANCE_SIGNATURE','default')}.sock"

@@ -77,6 +77,13 @@ def main():
         # Commands in generated bindings must use this installation's interpreter/path.
         # Do not reload the running compositor or alter the saved JSON overrides.
         execute([venv/'bin/python','-c',"import os,sys;from pathlib import Path;root=Path(os.environ['G8D_APPEARANCE_ROOT']);sys.path.insert(0,str(root/'plugins'));import shortcuts;state=root/'shortcuts.json';shortcuts.atomic(root/'shortcuts.lua',shortcuts.render(shortcuts.load())) if state.exists() else None"],env=environment)
+        if (config/'shortcuts.lua').exists():
+            execute(['Hyprland', '--verify-config', '--config', config/'hyprland.lua'],
+                    env={**os.environ, 'G8D_CONFIG_DIR': str(config)}, stdout=subprocess.DEVNULL)
+        # The in-app updater skips system packages, so include Nothing fonts locally.
+        execute([venv/'bin/python', '-c',
+                 "import os,sys;root=os.environ['G8D_APPEARANCE_ROOT'];sys.path.insert(0,root+'/plugins');import ui_themes;ui_themes.ensure_fonts(root,sys.argv[1])",
+                 target], env=environment)
         if not args.no_session:execute(['sudo','bash',REPO/'scripts/install-session.sh'])
     except Exception:
         if backup:

@@ -39,3 +39,4 @@ desktop-file-utils
 ttf-dejavu
 xkeyboard-config
 ttf-roboto
+fontconfig

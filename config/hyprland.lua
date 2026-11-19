@@ -91,4 +91,4 @@ hl.window_rule({name = "g8d-no-maximize", match = {class = ".*"}, suppress_event
 dofile(root .. "file-dialogs.lua")
 dofile(root .. "accent.lua")
 hl.on("hyprland.start", function() hl.exec_cmd(root .. "autostart") end)
-g8d_bind("layout", "Переключить раскладку", "SUPER + space", hl.dsp.exec_cmd("hyprctl switchxkblayout all next"))
+g8d_bind("layout", "Переключить раскладку", "SUPER + space", hl.dsp.exec_cmd("hyprctl switchxkblayout all next"), {locked = true})

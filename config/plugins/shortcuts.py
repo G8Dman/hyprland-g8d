@@ -18,37 +18,59 @@ STANDARD_PREFIX = 'g8d-standard:'
 CATALOG = ROOT / 'standard-shortcuts.json'
 
 
-def normalize(value):
-    parts = [p.strip() for p in value.split('+')]
-    if not parts or any(not p for p in parts):
-        raise ValueError('Укажи сочетание, например SUPER + CTRL + K.')
-    key = ALIASES.get(parts[-1].upper(), parts[-1])
-    mods = [ALIASES.get(p.upper(),p.upper()) for p in parts[:-1]]
-    if any(p not in MODS for p in mods) or len(set(mods)) != len(mods):
-        raise ValueError('Модификаторы: SUPER, CTRL, ALT, SHIFT.')
-    mouse = bool(re.fullmatch(r'mouse:(27[2-9]|28[0-9])|mouse_up|mouse_down', key))
-    if (not mouse and not re.fullmatch(r'[A-Za-z0-9_]+', key)) or key.upper() in MODS:
-        raise ValueError('Укажи одну клавишу после модификаторов.')
-    if mouse:
-        return ' + '.join([m for m in MODS if m in mods]+[key])
+def normalize_keys(keys):
     lib = ctypes.CDLL('libxkbcommon.so.0')
     lib.xkb_keysym_from_name.argtypes = [ctypes.c_char_p,ctypes.c_int]
     lib.xkb_keysym_from_name.restype = ctypes.c_uint
-    sym = lib.xkb_keysym_from_name(key.encode(),1)
-    if not sym: raise ValueError('Неизвестная клавиша: '+key)
     lib.xkb_keysym_get_name.argtypes = [ctypes.c_uint,ctypes.c_char_p,ctypes.c_size_t]
-    buf = ctypes.create_string_buffer(128)
-    lib.xkb_keysym_get_name(sym,buf,len(buf))
-    key=buf.value.decode()
-    if len(key)==1: key=key.upper()
-    if not any(m in mods for m in ('SUPER','CTRL','ALT')) and not re.fullmatch(r'F\d+|XF86\w+|Print|Pause',key):
+    normalized = []
+    for key in keys:
+        if not re.fullmatch(r'[A-Za-z0-9_]+', key):
+            raise ValueError('Некорректное имя клавиши: ' + key)
+        sym = lib.xkb_keysym_from_name(key.encode(), 1)
+        if not sym:
+            raise ValueError('Неизвестная клавиша: ' + key)
+        buffer = ctypes.create_string_buffer(128)
+        lib.xkb_keysym_get_name(sym, buffer, len(buffer))
+        name = buffer.value.decode()
+        normalized.append(name.upper() if len(name) == 1 else name)
+    return normalized
+
+
+def normalize(value):
+    parts = [part.strip() for part in value.split('+')]
+    if any(not part for part in parts):
+        raise ValueError('Укажи сочетание, например CTRL + ALT + SHIFT + Space + X + E.')
+    mods, keys = [], []
+    for part in parts:
+        name = ALIASES.get(part.upper(), part)
+        modifier = name.upper()
+        if modifier in MODS:
+            if keys or modifier in mods:
+                raise ValueError('Укажи SUPER, CTRL, ALT и SHIFT перед остальными клавишами, без повторов.')
+            mods.append(modifier)
+        else:
+            keys.append(name)
+    if not keys:
+        raise ValueError('Добавь хотя бы одну клавишу после модификаторов.')
+    mouse = [key for key in keys if re.fullmatch(r'mouse:(27[2-9]|28[0-9])|mouse_up|mouse_down', key)]
+    if mouse:
+        if len(keys) != 1:
+            raise ValueError('Кнопку или колесо мыши можно сочетать только с модификаторами.')
+        return ' + '.join([m for m in MODS if m in mods] + keys)
+    keys = normalize_keys(keys)
+    if len({key.casefold() for key in keys}) != len(keys):
+        raise ValueError('Одна и та же клавиша указана несколько раз.')
+    if not any(m in mods for m in ('SUPER','CTRL','ALT')) and any(
+            not re.fullmatch(r'F\d+|XF86\w+|Print|Pause', key) for key in keys):
         raise ValueError('Добавь SUPER, CTRL или ALT, чтобы сочетание не мешало печатать.')
-    return ' + '.join([m for m in MODS if m in mods]+[key])
+    return ' + '.join([m for m in MODS if m in mods] + keys)
 
 
 def signature(combo):
-    parts=normalize(combo).split(' + ')
-    return sum(MODS[m] for m in parts[:-1]),parts[-1].casefold()
+    parts = normalize(combo).split(' + ')
+    return (sum(MODS[part] for part in parts if part in MODS),
+            tuple(part.casefold() for part in parts if part not in MODS))
 
 
 def load():
@@ -116,11 +138,12 @@ def live_binds():
 
 def check_conflicts(items, binds):
     for item in effective(items):
-        mask,key=signature(item['combo'])
+        mask, keys = signature(item['combo'])
         for bind in binds:
             if str(bind.get('description','')).startswith((PREFIX,STANDARD_PREFIX)): continue
             # An ignore_mods binding also receives the key with these modifiers.
-            if (bind.get('modmask')==mask or bind.get('ignore_mods',False)) and str(bind.get('key','')).casefold()==key:
+            # Hyprland 0.57 reports only the final key for external chords in hyprctl binds.
+            if (bind.get('modmask')==mask or bind.get('ignore_mods',False)) and str(bind.get('key','')).casefold()==keys[-1]:
                 # Non-consuming switcher observers do not reserve the shortcut.
                 if bind.get('non_consuming',False): continue
                 raise ValueError(item['combo']+' уже занято оболочкой или другим приложением.')

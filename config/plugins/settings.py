@@ -15,6 +15,7 @@ gi.require_version('Gdk', '3.0')
 from gi.repository import Gdk, Gio, GLib, Gtk, Pango
 import branding
 import appearance
+import ui_themes
 import file_associations
 import wifi
 import shortcuts_ui
@@ -261,6 +262,7 @@ class Settings(Gtk.Application):
         self.build_audio()
         self.build_about()
         self.window.show_all()
+        ui_themes.apply_typography(self.window, appearance.interface_style())
         self.list.select_row(self.list.get_row_at_index(0))
         self.refresh()
         self.compact_navigation = None
@@ -277,6 +279,13 @@ class Settings(Gtk.Application):
             self.material_css = Gtk.CssProvider()
             self.material_css.load_from_path(str(PLUGINS / 'settings-material.css'))
             Gtk.StyleContext.add_provider_for_screen(screen, self.material_css, Gtk.STYLE_PROVIDER_PRIORITY_APPLICATION + 1)
+        if not getattr(self, 'interface_css', None):
+            self.interface_css = Gtk.CssProvider()
+            Gtk.StyleContext.add_provider_for_screen(screen, self.interface_css, Gtk.STYLE_PROVIDER_PRIORITY_APPLICATION + 2)
+        style = appearance.interface_style()
+        if style == 'nothing': self.interface_css.load_from_path(str(PLUGINS / 'nothing.css'))
+        else: self.interface_css.load_from_data(b'')
+        if self.window: ui_themes.apply_typography(self.window, style)
 
     def resize_navigation(self, _, allocation):
         compact = allocation.width < 940
@@ -316,6 +325,8 @@ class Settings(Gtk.Application):
         state = appearance.read_selection()
         self.appearance_updating = True
         self.theme_combo.set_active_id(appearance.theme_name(state))
+        self.ui_style_combo.set_active_id(appearance.interface_style(state))
+        self.mode_combo.set_active_id(appearance.theme_mode(state))
         self.auto_colors.set_active(bool(state.get('wallpaper_colors')))
         source = state.get('palette_output')
         if source and source not in self.palette_outputs:
@@ -323,8 +334,9 @@ class Settings(Gtk.Application):
             self.palette_outputs.add(source)
         if source: self.palette_output.set_active_id(source)
         self.appearance_updating = False
-        self.appearance_status.set_text('Тема: ' + appearance.THEMES[appearance.theme_name(state)] +
-                                        ' · Акцент: ' + state['accent'] +
+        self.lock_background_status.set_text(Path(state['lock_background']).name if state.get('lock_background') else 'Однотонный фон темы')
+        self.appearance_status.set_text('Стиль: ' + appearance.UI_STYLES[appearance.interface_style(state)] + ' · Таскбар: ' + appearance.TASKBAR_STYLES[appearance.theme_name(state)] +
+                                        ' · ' + appearance.MODES[appearance.theme_mode(state)] + ' · Акцент: ' + state['accent'] +
                                         (' · По обоям' if state.get('wallpaper_colors') else ' · Вручную'))
         return False
 
@@ -337,27 +349,35 @@ class Settings(Gtk.Application):
 
     def apply_theme(self):
         theme = self.theme_combo.get_active_id()
+        mode = self.mode_combo.get_active_id()
+        ui_style = self.ui_style_combo.get_active_id()
         if theme not in appearance.THEMES: return
         self.theme_apply.set_sensitive(False)
         self.theme_combo.set_sensitive(False)
+        self.ui_style_combo.set_sensitive(False)
+        self.mode_combo.set_sensitive(False)
         self.auto_colors.set_sensitive(False)
         self.palette_output.set_sensitive(False)
         self.palette_pick.set_sensitive(False)
         self.palette_edit.set_sensitive(False)
+        command = ['python3', str(PLUGINS / 'appearance.py'), 'apply', '--taskbar-style', theme, '--ui-style', ui_style]
+        if mode != appearance.theme_mode(): command += ['--mode', mode]
         def operation():
             try:
-                run(['python3', str(PLUGINS / 'appearance.py'), 'apply', '--theme', theme])
+                run(command)
                 return None
             except Exception as exc: return str(exc)
         def done(error):
             self.theme_apply.set_sensitive(True)
             self.theme_combo.set_sensitive(True)
+            self.ui_style_combo.set_sensitive(True)
+            self.mode_combo.set_sensitive(True)
             self.auto_colors.set_sensitive(True)
             self.palette_output.set_sensitive(True)
             self.palette_pick.set_sensitive(True)
             self.palette_edit.set_sensitive(True)
             self.refresh_appearance()
-            self.message(error if error else 'Тема ' + appearance.THEMES[theme] + ' применена', bool(error))
+            self.message(error if error else 'Стиль ' + appearance.UI_STYLES[ui_style] + ' применён', bool(error))
         self.work(operation, done)
 
     def set_wallpaper_colors(self, enabled):
@@ -370,6 +390,8 @@ class Settings(Gtk.Application):
         self.palette_pick.set_sensitive(False)
         self.theme_apply.set_sensitive(False)
         self.theme_combo.set_sensitive(False)
+        self.ui_style_combo.set_sensitive(False)
+        self.mode_combo.set_sensitive(False)
         self.palette_edit.set_sensitive(False)
         def operation():
             try: run(command, timeout=35); return None
@@ -380,6 +402,8 @@ class Settings(Gtk.Application):
             self.palette_pick.set_sensitive(True)
             self.theme_apply.set_sensitive(True)
             self.theme_combo.set_sensitive(True)
+            self.ui_style_combo.set_sensitive(True)
+            self.mode_combo.set_sensitive(True)
             self.palette_edit.set_sensitive(True)
             self.refresh_appearance()
             self.message(error if error else 'Тема и акцент подобраны по обоям' if enabled else 'Автоподбор выключен', bool(error))
@@ -388,12 +412,15 @@ class Settings(Gtk.Application):
     def edit_theme_colors(self):
         state = appearance.read_selection()
         theme = appearance.theme_name(state)
-        dialog = Gtk.Dialog(title='Цвета темы · ' + appearance.THEMES[theme], transient_for=self.window, modal=True)
+        mode = appearance.theme_mode(state)
+        ui_style = appearance.interface_style(state)
+        title = appearance.UI_STYLES[ui_style] + ' · ' + appearance.THEMES[theme] + ' · ' + appearance.MODES[mode]
+        dialog = Gtk.Dialog(title='Цвета темы · ' + title, transient_for=self.window, modal=True)
         dialog.get_style_context().add_class('g8d-settings')
         dialog.get_style_context().add_class('palette-editor')
         dialog.set_default_size(600, -1)
         dialog.set_resizable(False)
-        header = Gtk.HeaderBar(title='Цвета темы · ' + appearance.THEMES[theme])
+        header = Gtk.HeaderBar(title='Цвета темы · ' + title)
         header.set_show_close_button(True)
         dialog.set_titlebar(header)
         dialog.add_button('Сбросить', 1001)
@@ -401,7 +428,7 @@ class Settings(Gtk.Application):
         dialog.add_button('Применить', Gtk.ResponseType.OK).get_style_context().add_class('suggested-action')
         body = dialog.get_content_area()
         body.set_border_width(20); body.set_spacing(10)
-        body.pack_start(text('Изменения сохранятся для ' + appearance.THEMES[theme] + '. Применение выключит автоподбор.\nАкцент подстраивается для читаемости.', 'muted', True), False, False, 0)
+        body.pack_start(text('Изменения сохранятся для ' + title + '. Применение выключит автоподбор.\nАкцент подстраивается для читаемости.', 'muted', True), False, False, 0)
         fields = {}
         colors = {'accent': state['accent'], **appearance.theme_colors(theme, state)}
         labels = {'accent': 'Акцент', **appearance.COLOR_LABELS}
@@ -428,7 +455,7 @@ class Settings(Gtk.Application):
         body.pack_start(status, False, False, 0)
         def response(_, code):
             if code == 1001:
-                for key, value in {'accent': '#8bbfba', **appearance.DEFAULT_COLORS[theme]}.items(): fields[key].set_text(value)
+                for key, value in {'accent': '#8bbfba', **appearance.default_colors(theme, mode, ui_style)}.items(): fields[key].set_text(value)
                 status.set_text('Цвета сброшены. Нажми «Применить», чтобы сохранить.')
                 return
             if code != Gtk.ResponseType.OK: dialog.destroy(); return
@@ -436,13 +463,13 @@ class Settings(Gtk.Application):
             try:
                 for key, value in values.items():
                     if not re.fullmatch(r'#[0-9a-f]{6}', value): raise ValueError(labels[key] + ': введи #RRGGBB')
-                custom = appearance.validate_colors({key: value for key, value in values.items() if key != 'accent'}, theme)
-                custom = {key: value for key, value in custom.items() if value != appearance.DEFAULT_COLORS[theme][key]}
+                custom = appearance.validate_colors({key: value for key, value in values.items() if key != 'accent'}, theme, mode, ui_style)
+                custom = {key: value for key, value in custom.items() if value != appearance.default_colors(theme, mode, ui_style)[key]}
             except ValueError as exc: status.set_text(str(exc)); return
             for code in (1001, Gtk.ResponseType.CANCEL, Gtk.ResponseType.OK): dialog.set_response_sensitive(code, False)
             dialog.set_deletable(False)
             command = ['python3', str(PLUGINS / 'appearance.py'), 'apply', '--theme', theme,
-                       '--accent', values['accent'], '--colors', json.dumps(custom)]
+                       '--mode', mode, '--ui-style', ui_style, '--accent', values['accent'], '--colors', json.dumps(custom)]
             def operation():
                 try: run(command); return None
                 except Exception as exc: return str(exc)
@@ -918,21 +945,31 @@ class Settings(Gtk.Application):
     def build_appearance(self):
         page = self.pages['appearance']
         palette = group(page, 'Тема и палитра')
+        self.ui_style_combo = Gtk.ComboBoxText()
+        self.ui_style_combo.get_accessible().set_name('Стиль интерфейса')
+        for key, title in appearance.UI_STYLES.items(): self.ui_style_combo.append(key, title)
+        self.ui_style_combo.set_active_id(appearance.interface_style())
+        row(palette, 'Стиль интерфейса', 'Material или Nothing · меню, настройки и поиск', self.ui_style_combo)
         self.theme_combo = Gtk.ComboBoxText()
-        self.theme_combo.get_accessible().set_name('Тема оболочки')
-        self.theme_combo.append('graphite', 'Graphite · тёмная')
-        self.theme_combo.append('clear', 'Clear · светлая')
+        self.theme_combo.get_accessible().set_name('Стиль таскбара')
+        self.theme_combo.append('graphite', 'Graphite')
+        self.theme_combo.append('clear', 'Clear')
         self.theme_combo.set_active_id(appearance.theme_name())
+        self.mode_combo = Gtk.ComboBoxText()
+        self.mode_combo.get_accessible().set_name('Светлая или тёмная тема')
+        for key, title in appearance.MODES.items(): self.mode_combo.append(key, title)
+        self.mode_combo.set_active_id(appearance.theme_mode())
         self.theme_apply = button('Применить', self.apply_theme)
         self.theme_apply.get_style_context().add_class('suggested-action')
-        controls = Gtk.Box(spacing=8)
-        controls.pack_start(self.theme_combo, False, False, 0)
-        controls.pack_start(self.theme_apply, False, False, 0)
-        row(palette, 'Тема оболочки', 'Панель, меню и приложения оболочки', controls)
+        row(palette, 'Стиль таскбара', 'Graphite — сплошной · Clear — прозрачный', self.theme_combo)
+        mode_controls = Gtk.Box(spacing=8)
+        mode_controls.pack_start(self.mode_combo, False, False, 0)
+        mode_controls.pack_start(self.theme_apply, False, False, 0)
+        row(palette, 'Светлый или тёмный режим', 'Оба режима доступны для каждого стиля', mode_controls)
         self.auto_colors = Gtk.Switch()
         self.auto_colors.set_active(bool(appearance.read_selection().get('wallpaper_colors')))
         self.auto_colors.connect('notify::active', lambda switch, *_: self.set_wallpaper_colors(switch.get_active()))
-        row(palette, 'Цвета из обоев', 'Подбирать светлую или тёмную тему и акцент автоматически', self.auto_colors)
+        row(palette, 'Цвета из обоев', 'Подбирать яркость и акцент, сохраняя выбранный стиль', self.auto_colors)
         self.palette_output = Gtk.ComboBoxText()
         self.palette_outputs = set()
         try: outputs = appearance.monitors()
@@ -959,6 +996,14 @@ class Settings(Gtk.Application):
         row(wallpapers, 'Моя коллекция', str(Path.home()/'Изображения/wallpaper'),
             button('Открыть', lambda: self.launch(['xdg-open', str(Path.home()/'Изображения/wallpaper')])))
 
+        lock = group(page, 'Экран блокировки')
+        lock_actions = Gtk.Box(spacing=8)
+        lock_actions.pack_start(button('Выбрать фон', self.choose_lock_background), False, False, 0)
+        lock_actions.pack_start(button('Однотонный', lambda: self.save_lock_background('')), False, False, 0)
+        row(lock, 'Фон блокировки', 'Часы и пароль на полупрозрачной подложке', lock_actions)
+        self.lock_background_status = text('', 'muted', True)
+        lock.pack_start(self.lock_background_status, False, False, 0)
+
         shell = group(page, 'Персонализация')
         self.brand_entry = Gtk.Entry()
         self.brand_entry.get_accessible().set_name('Название оболочки')
@@ -977,6 +1022,32 @@ class Settings(Gtk.Application):
         row(shell, 'Игровой режим', 'Приостанавливает обои, анимации и эффекты', button('Переключить', self.toggle_game))
         self.appearance_monitor = Gio.File.new_for_path(str(ROOT / 'appearance.json')).monitor_file(Gio.FileMonitorFlags.NONE, None)
         self.appearance_monitor.connect('changed', self.appearance_changed)
+
+    def choose_lock_background(self):
+        dialog = Gtk.FileChooserDialog(title='Фон экрана блокировки', transient_for=self.window,
+                                       action=Gtk.FileChooserAction.OPEN)
+        dialog.add_buttons('Отмена', Gtk.ResponseType.CANCEL, 'Выбрать', Gtk.ResponseType.OK)
+        images = Gtk.FileFilter(); images.set_name('Изображения · PNG, JPEG, WebP')
+        for mime in ('image/png', 'image/jpeg', 'image/webp'): images.add_mime_type(mime)
+        dialog.add_filter(images)
+        current = appearance.read_selection().get('lock_background')
+        if current: dialog.set_filename(current)
+        else: dialog.set_current_folder(str(Path.home() / 'Изображения'))
+        response = dialog.run()
+        filename = dialog.get_filename()
+        dialog.destroy()
+        if response == Gtk.ResponseType.OK and filename: self.save_lock_background(filename)
+
+    def save_lock_background(self, filename):
+        def operation():
+            try:
+                run(['python3', str(PLUGINS / 'appearance.py'), 'apply', '--lock-background', filename])
+                return None
+            except Exception as exc: return str(exc)
+        def done(error):
+            self.refresh_appearance()
+            self.message(error or 'Фон блокировки сохранён', bool(error))
+        self.work(operation, done)
 
     def save_brand(self):
         try:

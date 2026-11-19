@@ -1,6 +1,3 @@
-import sys
-from pathlib import Path
-sys.path.insert(0,str(Path(__file__).resolve().parents[2]/'config/plugins'))
 #!/usr/bin/env python3
 """Wallpaper classification, neutral accents, isolated profiles and transactional edits."""
 import json
@@ -9,9 +6,12 @@ import shutil
 import tempfile
 from unittest.mock import patch
 from PIL import Image
+import sys
+sys.path.insert(0, str(Path(__file__).resolve().parents[2] / 'config/plugins'))
+
 import appearance as a
 
-source = Path(__file__).resolve().parents[2] / 'config'
+source = (Path(__file__).resolve().parents[2] / 'config')
 with tempfile.TemporaryDirectory(prefix='g8d-wallpaper-colors-') as directory:
     root = Path(directory)
     for folder in ['appearance-templates', 'themes']: shutil.copytree(source/folder, root/folder)
@@ -21,7 +21,7 @@ with tempfile.TemporaryDirectory(prefix='g8d-wallpaper-colors-') as directory:
         path = root/(name+'.png');Image.new('RGB',(96,96),color).save(path);images[name] = path
     with patch.object(a,'ROOT',root), patch.object(a,'SELECTION',root/'appearance.json'), patch.object(a,'CACHE',root/'cache'):
         for name, expected in [('black','graphite'),('white','clear'),('gray','graphite'),('red-dark','graphite'),('red-light','clear')]:
-            result = a.analyze_wallpaper(images[name]);assert result['theme']==expected,(name,result)
+            result = a.analyze_wallpaper(images[name]);assert result['mode']==('light' if expected == 'clear' else 'dark'),(name,result)
         assert a.analyze_wallpaper(images['black'])['accent']=='#9ba7b3'
         assert a.analyze_wallpaper(images['white'])['accent']=='#587083'
         assert a.analyze_wallpaper(images['red-light'])==a.analyze_wallpaper(images['red-light'])
@@ -31,7 +31,7 @@ with tempfile.TemporaryDirectory(prefix='g8d-wallpaper-colors-') as directory:
         a.change(path=images['black'],output='B',live=False)
         assert a.theme_name()=='clear','Other monitor must not change the chosen source palette'
         a.change(path=images['black'],output='A',live=False)
-        assert a.theme_name()=='graphite'
+        assert a.theme_name()=='clear' and a.theme_mode()=='dark'
         assert a.read_selection()['wallpapers']['B']==str(images['black'])
         a.change(path=images['white'],output='A',live=False)
         assert a.theme_name()=='clear'
@@ -44,10 +44,10 @@ with tempfile.TemporaryDirectory(prefix='g8d-wallpaper-colors-') as directory:
         assert '#203040' in (root/'waybar.css').read_text()
         assert '#bcc8dc' in (root/'plugins/style.css').read_text()
         a.change(theme='graphite',live=False)
-        assert a.theme_colors()['background']==a.DEFAULT_COLORS['graphite']['background']
+        assert a.theme_colors()['background']==a.default_colors('graphite', 'light')['background']
         a.change(theme='clear',live=False)
         assert a.theme_colors()['background']=='#f3f6ff'
-        a.change(auto=True,output='B',live=False);assert a.theme_name()=='graphite'
+        a.change(auto=True,output='B',live=False);assert a.theme_name()=='clear' and a.theme_mode()=='dark'
         a.change(auto=True,output='A',live=False);assert a.theme_name()=='clear'
         assert a.theme_colors()['background']=='#f3f6ff','Auto mode must preserve custom profiles'
         files=[a.SELECTION,*[root/n for n in a.THEME_FILES],root/'accent.lua']

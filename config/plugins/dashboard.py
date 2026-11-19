@@ -2,7 +2,9 @@
 import datetime as dt
 import subprocess
 from gi.repository import Gtk, GLib, Pango
-from vinyl import Vinyl
+from music_view import MusicView
+import appearance
+import ui_themes
 
 
 def box(vertical=True, spacing=10):
@@ -23,6 +25,15 @@ def button(title, action):
     return widget
 
 
+def icon_button(icon, title, action):
+    widget = Gtk.Button()
+    widget.add(Gtk.Image.new_from_icon_name(icon, Gtk.IconSize.BUTTON))
+    widget.set_tooltip_text(title)
+    widget.get_accessible().set_name(title)
+    widget.connect('clicked', lambda *_: action())
+    return widget
+
+
 def row(parent, name, value):
     line = box(False, 8)
     line.pack_start(text(name), True, True, 0)
@@ -32,11 +43,49 @@ def row(parent, name, value):
     parent.pack_start(line, False, False, 0)
 
 
+class SegmentedMeter(Gtk.DrawingArea):
+    """A CPU readout with a numeric companion, rather than decorative animation."""
+    def __init__(self):
+        super().__init__()
+        self.fraction = 0
+        self.set_size_request(-1, 8)
+        self.get_accessible().set_name('Нагрузка процессора')
+        self.connect('draw', self.draw)
+
+    def update(self, value):
+        self.fraction = max(0, min(1, value / 100))
+        self.set_tooltip_text(f'CPU · {value:.0f}%')
+        self.queue_draw()
+
+    def draw(self, widget, context):
+        style = self.get_style_context()
+        _, empty = style.lookup_color('nd_border')
+        _, full = style.lookup_color('nd_text')
+        count, gap = 40, 2
+        width = max(1, (self.get_allocated_width() - (count-1)*gap) / count)
+        for index in range(count):
+            color = full if index < round(self.fraction*count) else empty
+            context.set_source_rgba(color.red, color.green, color.blue, color.alpha)
+            context.rectangle(index*(width+gap), 0, width, self.get_allocated_height())
+            context.fill()
+        return False
+
+
 class Dashboard:
     def __init__(self, popup, width):
         self.popup = popup
         self.sync = popup.app.calendar
-        self.root = box(spacing=12)
+        self.popup.window.get_style_context().add_class('material-dashboard')
+        self.root = box(spacing=20)
+        self.instrument = box(spacing=8)
+        self.instrument.set_no_show_all(True)
+        self.instrument_caption = text('SYSTEM / CPU', 'instrument-label')
+        self.instrument_value = text('00%', 'instrument-value')
+        self.meter = SegmentedMeter()
+        self.instrument.pack_start(self.instrument_caption, False, False, 0)
+        self.instrument.pack_start(self.instrument_value, False, False, 0)
+        self.instrument.pack_start(self.meter, False, False, 0)
+        self.root.pack_start(self.instrument, False, False, 0)
         self.stack = Gtk.Stack()
         self.stack.set_homogeneous(False)
         self.stack.set_interpolate_size(True)
@@ -72,8 +121,8 @@ class Dashboard:
         calendar.pack_start(self.status, False, False, 0)
         controls = box(False, 5)
         controls.pack_start(button('Сегодня', self.today), True, True, 0)
-        controls.pack_start(button('↻', lambda: self.sync.refresh(force=True)), False, False, 0)
-        controls.pack_start(button('⚙', self.settings_toggle), False, False, 0)
+        controls.pack_start(icon_button('view-refresh-symbolic', 'Обновить календарь', lambda: self.sync.refresh(force=True)), False, False, 0)
+        controls.pack_start(icon_button('emblem-system-symbolic', 'Настройки календаря', self.settings_toggle), False, False, 0)
         calendar.pack_start(controls, False, False, 0)
         self.settings = Gtk.Revealer()
         settings = box(spacing=8)
@@ -101,18 +150,37 @@ class Dashboard:
         calendar_layout.pack_start(agenda_scroll, True, True, 0)
         self.system = box(False, 24)
         self.music = box(spacing=12)
-        self.music_header = box(spacing=12)
-        self.record = Vinyl()
         system.pack_start(self.system, False, False, 0)
-        music.pack_start(self.music_header, False, False, 0)
-        music.pack_start(self.record, False, False, 0)
         music.pack_start(self.music, False, False, 0)
+        self.music_view = MusicView(popup)
+        self.music.pack_start(self.music_view, False, False, 0)
         self.stack.connect('notify::visible-child-name', self.tab_changed)
         self.stack.set_visible_child_name('calendar')
         self.tab_changed()
         self.calendar_update()
+        self.restyle()
+
+    def restyle(self):
+        nothing = appearance.interface_style() == "nothing"
+        self.stack.set_transition_type(Gtk.StackTransitionType.CROSSFADE if nothing else Gtk.StackTransitionType.SLIDE_LEFT_RIGHT)
+        self.stack.set_transition_duration(180 if nothing else 240)
+        for child, title in zip(self.cards, ["Календарь", "Мониторинг", "Музыка"]):
+            self.stack.child_set_property(child, "title", title.upper() if nothing else title)
+        ui_themes.apply_typography(self.root, appearance.interface_style())
+        self.update_instrument()
+
+    def update_instrument(self):
+        name = self.stack.get_visible_child_name()
+        visible = appearance.interface_style() == "nothing" and name == "system"
+        self.instrument.set_visible(visible)
+        if visible:
+            value = self.popup.data.get("cpu", 0)
+            self.instrument_value.set_text(f"{value:02.0f}%")
+            self.meter.update(value)
+            for child in self.instrument.get_children(): child.show()
 
     def tab_changed(self, *_):
+        self.update_instrument()
         name = self.stack.get_visible_child_name() or 'calendar'
         width = {'calendar': 820, 'system': 1160, 'music': 620}[name]
         width = min(width, self.popup.monitor.get_geometry().width - 48)
@@ -193,8 +261,6 @@ class Dashboard:
     def update(self, data):
         self.calendar_update()
         for child in self.system.get_children(): child.destroy()
-        for child in self.music.get_children(): child.destroy()
-        for child in self.music_header.get_children(): child.destroy()
         self.popup.render_music(data, self.music)
         if not data:
             self.system.pack_start(text('Получаю данные…', 'muted'), False, False, 0)
@@ -238,3 +304,5 @@ class Dashboard:
                 ip.set_tooltip_text('\n'.join(interface['ips']))
                 details.pack_start(ip, False, False, 0)
         self.root.show_all()
+        self.update_instrument()
+        ui_themes.apply_typography(self.root, appearance.interface_style())

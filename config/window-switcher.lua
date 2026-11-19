@@ -56,10 +56,11 @@ local modifier_keys = { ALT = {"Alt_L", "Alt_R"}, CTRL = {"Control_L", "Control_
 for _, id in ipairs({"switch-next", "switch-prev"}) do
     if g8d_standard_active(id) then
         local combo = g8d_standard_combo(id)
-        local key = combo:match("([^ +]+)%s*$")
-        if not observed_keys[key] then
-            observed_keys[key] = true
-            hl.bind(key, stop_timer, { release = true, ignore_mods = true, non_consuming = true })
+        for key in combo:gmatch("[^ +]+") do
+            if not modifier_keys[key] and key ~= "SHIFT" and not observed_keys[key] then
+                observed_keys[key] = true
+                hl.bind(key, stop_timer, { release = true, ignore_mods = true, non_consuming = true })
+            end
         end
         for mod, keys in pairs(modifier_keys) do
             if combo:find(mod .. " +", 1, true) and not observed_mods[mod] then

@@ -28,8 +28,8 @@ class InstallUpgrade(unittest.TestCase):
         args=list(map(str,args))
         if args[1:3]==['-m','venv']:
             binary=Path(args[-1])/'bin/python';binary.parent.mkdir(parents=True,exist_ok=True);binary.symlink_to(sys.executable)
-        elif '-c' in args and "G8D_APPEARANCE_ROOT" in args[-1]:
-            subprocess.run([sys.executable,'-c',args[-1]],check=True,env=kwargs['env'])
+        elif '-c' in args and "G8D_APPEARANCE_ROOT" in args[args.index('-c') + 1]:
+            subprocess.run([sys.executable,*args[args.index('-c'):]],check=True,env=kwargs['env'])
 
     def test_saved_preferences_survive_and_new_ui_is_complete(self):
         with tempfile.TemporaryDirectory() as directory:
@@ -49,6 +49,7 @@ class InstallUpgrade(unittest.TestCase):
             self.assertTrue((config/'plugins/icons/hicolor/scalable/actions/g8d-wifi-symbolic.svg').exists())
             self.assertTrue((config/'themes/clear/plugins/settings.css').exists())
             self.assertTrue((config/'shortcuts.lua').exists())
+            self.assertEqual(len(list((home/'.local/share/fonts/g8d-nothing').glob('*.ttf'))),3)
             self.assertTrue(list((home/'.local/state/hyprland-g8d/install-backups').glob('*/config/appearance.json')))
 
     def test_render_failure_restores_previous_config(self):

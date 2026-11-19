@@ -1,6 +1,3 @@
-import sys
-from pathlib import Path
-sys.path.insert(0,str(Path(__file__).resolve().parents[2]/'config/plugins'))
 #!/usr/bin/env python3
 """Check theme round trips, preserved preferences and failure rollback off-screen."""
 import json
@@ -9,11 +6,14 @@ import shutil
 import tempfile
 from unittest.mock import patch
 
+import sys
+sys.path.insert(0, str(Path(__file__).resolve().parents[2] / 'config/plugins'))
+
 import appearance
 import branding
 
 
-source = Path(__file__).resolve().parents[2] / 'config'
+source = (Path(__file__).resolve().parents[2] / 'config')
 with tempfile.TemporaryDirectory(prefix='g8d-themes-') as directory:
     root = Path(directory)
     for folder in ['appearance-templates', 'themes']:
@@ -29,7 +29,7 @@ with tempfile.TemporaryDirectory(prefix='g8d-themes-') as directory:
         files = [*appearance.THEME_FILES, 'accent.lua', 'waybar.json', 'appearance.json']
         snapshot = lambda: {name: (root / name).read_bytes() for name in files}
         graphite = snapshot()
-        appearance.change(theme='clear', live=False)
+        appearance.change(theme='clear', mode='light', live=False)
         assert 'background: transparent' in (root / 'waybar.css').read_text()
         assert 'Моя оболочка / clear' in (root / 'hyprlock.conf').read_text()
         branding.save('Другое имя', root, live=False)
@@ -40,7 +40,7 @@ with tempfile.TemporaryDirectory(prefix='g8d-themes-') as directory:
         assert appearance.theme_name() == 'clear'
         assert appearance.read_selection()['accent'] == '#e7a2ba'
         assert '#e7a2ba' not in (root / 'plugins/settings.css').read_text(), 'Light accents need darker ink'
-        appearance.change(accent=state['accent'], theme='graphite', live=False)
+        appearance.change(accent=state['accent'], theme='graphite', mode='dark', live=False)
         assert snapshot() == graphite, 'Graphite must be restored without cumulative substitutions'
         before = snapshot()
         for kwargs in [{'theme': '../bad'}, {'accent': 'invalid'}]:
@@ -54,7 +54,7 @@ with tempfile.TemporaryDirectory(prefix='g8d-themes-') as directory:
             else: raise AssertionError('Reload error ignored')
         assert snapshot() == before, 'Reload failure must restore files and selection'
         (root / 'themes/clear/kitty.conf').unlink()
-        try: appearance.change(theme='clear', live=False)
+        try: appearance.change(theme='clear', mode='light', live=False)
         except FileNotFoundError: pass
         else: raise AssertionError('Incomplete theme accepted')
         assert snapshot() == before, 'Incomplete theme must leave the old theme intact'

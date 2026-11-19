@@ -16,6 +16,7 @@ import time
 
 from PIL import Image
 import psutil
+import ui_themes
 
 ROOT = Path(os.environ.get('G8D_APPEARANCE_ROOT', Path(__file__).resolve().parent.parent))
 DIRECTORY = Path.home() / 'Изображения/wallpaper'
@@ -28,7 +29,10 @@ STATIC = {'.png', '.jpg', '.jpeg', '.bmp', '.tif', '.tiff', '.webp', '.avif', '.
 VIDEO = {'.gif', '.mp4', '.webm', '.mkv', '.mov', '.avi', '.m4v', '.mpeg', '.mpg', '.ogv', '.apng'}
 PALETTE = {'Графит / бирюзовый': '#8bbfba', 'Лаванда': '#b6a3df', 'Небесный': '#8ab7ed',
            'Мята': '#91cfa4', 'Розовый': '#e7a2ba', 'Янтарный': '#e8bd7f', 'Коралловый': '#e99b8b'}
-THEMES = {'graphite': 'Graphite', 'clear': 'Clear'}
+TASKBAR_STYLES = {'graphite': 'Graphite', 'clear': 'Clear'}
+THEMES = TASKBAR_STYLES  # Legacy API: --theme selects the taskbar, never the interface.
+UI_STYLES = ui_themes.STYLES
+MODES = {'light': 'Светлая', 'dark': 'Тёмная'}
 THEME_FILES = ['plugins/style.css', 'plugins/settings.css', 'waybar.css',
                'rofi.rasi', 'mako.conf', 'hyprlock.conf', 'kitty.conf']
 COLOR_LABELS = {'background': 'Фон', 'surface': 'Поверхности', 'control': 'Кнопки',
@@ -41,8 +45,11 @@ DEFAULT_COLORS = {
 
 def read_selection():
     defaults = {'wallpaper': str(ROOT / 'wallpaper.png'), 'accent': '#8bbfba', 'wallpapers': {}, 'theme': 'graphite'}
-    try: return {**defaults, **json.loads(SELECTION.read_text())}
-    except (OSError, ValueError): return defaults
+    try: state = {**defaults, **json.loads(SELECTION.read_text())}
+    except (OSError, ValueError): state = defaults
+    state.setdefault('ui_style', 'material')
+    state.setdefault('mode', 'light' if state['theme'] == 'clear' else 'dark')
+    return state
 
 
 def monitors():
@@ -133,26 +140,56 @@ def analyze_wallpaper(path):
             accent = '#' + ''.join(f'{round(c * 255):02x}' for c in color)
         else:
             accent = '#9ba7b3' if theme == 'graphite' else '#587083'
-        return {'theme': theme, 'accent': accent, 'brightness': round(brightness, 3)}
+        return {'mode': 'light' if theme == 'clear' else 'dark', 'accent': accent, 'brightness': round(brightness, 3)}
 
 
 def auto_accent(path):
     return analyze_wallpaper(path)['accent']
 
 
-def theme_colors(theme=None, state=None):
+def theme_mode(state=None):
+    state = read_selection() if state is None else state
+    mode = state.get('mode', 'light' if theme_name(state) == 'clear' else 'dark')
+    return mode if mode in MODES else 'dark'
+
+
+def interface_style(state=None):
+    state = read_selection() if state is None else state
+    value = state.get('ui_style', 'material')
+    return value if value in UI_STYLES else 'material'
+
+
+def palette_key(theme, mode, ui_style='material'):
+    return ('' if ui_style == 'material' else ui_style + ':') + theme + ':' + mode
+
+
+def default_colors(theme, mode, ui_style='material'):
+    palette = dict(ui_themes.NOTHING_COLORS[mode] if ui_style == 'nothing' else DEFAULT_COLORS['clear' if mode == 'light' else 'graphite'])
+    palette['bar_text'] = '#ffffff' if theme == 'clear' else DEFAULT_COLORS['clear' if mode == 'light' else 'graphite']['text']
+    return palette
+
+
+def color_overrides(theme, mode, state):
+    profiles = state.get('theme_colors', {})
+    style = interface_style(state)
+    legacy = profiles.get(theme, {}) if style == 'material' and mode == ('light' if theme == 'clear' else 'dark') else {}
+    return profiles.get(palette_key(theme, mode, style), legacy)
+
+
+def theme_colors(theme=None, state=None, mode=None):
     state = read_selection() if state is None else state
     theme = theme_name(state) if theme is None else theme
-    return {**DEFAULT_COLORS[theme], **state.get('theme_colors', {}).get(theme, {})}
+    mode = theme_mode(state) if mode is None else mode
+    return {**default_colors(theme, mode, interface_style(state)), **color_overrides(theme, mode, state)}
 
 
-def validate_colors(colors, theme):
+def validate_colors(colors, theme, mode=None, ui_style='material'):
     if not isinstance(colors, dict): raise ValueError('Цвета должны быть объектом JSON')
     for key, value in colors.items():
         if key not in COLOR_LABELS: raise ValueError('Неизвестный цвет: ' + key)
         if not isinstance(value, str) or not re.fullmatch(r'#[0-9a-fA-F]{6}', value):
             raise ValueError(COLOR_LABELS[key] + ': нужен цвет #RRGGBB')
-    merged = {**DEFAULT_COLORS[theme], **colors}
+    merged = {**default_colors(theme, theme_mode() if mode is None else mode, ui_style), **colors}
     for role in ['background', 'surface', 'control', 'selection']:
         if contrast(merged['text'], merged[role]) < 4.5:
             raise ValueError('Основной текст плохо читается на цвете «' + COLOR_LABELS[role] + '». Измени текст или фон.')
@@ -297,14 +334,20 @@ def recolor_template(text, theme, replacements, overrides, relative):
     return text
 
 
-def apply_accent(accent, live=True, theme=None, colors=None):
+def apply_accent(accent, live=True, theme=None, colors=None, mode=None, lock_background=None, ui_style=None):
     if not re.fullmatch(r'#[0-9a-fA-F]{6}', accent): raise ValueError('Нужен цвет в формате #RRGGBB')
     accent = accent.lower()
     theme = theme_name() if theme is None else theme
     if theme not in THEMES: raise ValueError('Неизвестная тема: ' + theme)
-    colors = read_selection().get('theme_colors', {}).get(theme, {}) if colors is None else colors
-    colors = validate_colors(colors, theme)
-    palette = {**DEFAULT_COLORS[theme], **colors}
+    state = read_selection()
+    mode = theme_mode(state) if mode is None else mode
+    if mode not in MODES: raise ValueError('Неизвестный режим: ' + mode)
+    ui_style = interface_style(state) if ui_style is None else ui_style
+    if ui_style not in UI_STYLES: raise ValueError('Неизвестный стиль интерфейса: ' + ui_style)
+    colors = color_overrides(theme, mode, {**state, 'ui_style':ui_style}) if colors is None else colors
+    colors = validate_colors(colors, theme, mode, ui_style)
+    palette = {**default_colors(theme, mode, ui_style), **colors}
+    lock_background = state.get('lock_background', '') if lock_background is None else lock_background
     channels = rgb(accent)
     ink = list(channels)
     surfaces = [palette[key] for key in ['background', 'surface', 'control', 'selection']]
@@ -315,30 +358,61 @@ def apply_accent(accent, live=True, theme=None, colors=None):
         if weakest(color) >= 4.5: break
         ink = [round(c * .9 + end * .1) if abs(end - c) > 9 else end for c, end in zip(ink, target)]
     surface_accent = '#' + ''.join(f'{c:02x}' for c in ink)
+    bar_palette = {**default_colors(theme, mode), **{key:value for key,value in colors.items() if key == 'bar_text'}}
+    bar_ink = list(channels)
+    bar_surfaces = [bar_palette[key] for key in ['background','surface','control','selection']]
+    for _ in range(128):
+        bar_accent = '#' + ''.join(f'{c:02x}' for c in bar_ink)
+        if min(contrast(bar_accent, bg) for bg in bar_surfaces) >= 4.5: break
+        end = 0 if mode == 'light' else 255
+        bar_ink = [round(c*.9 + end*.1) if abs(end-c)>9 else end for c in bar_ink]
+    if ui_style == 'nothing': surface_accent = palette['text']
     def blend(factor):
         base = (17, 21, 25)
         return '#' + ''.join(f'{round(b + (c - b) * factor):02x}' for b, c in zip(base, channels))
     replacements = {'#8bbfba': surface_accent, '#a5d2cd': surface_accent, '#b6d8d4': surface_accent,
                     '#263638': blend(.17), '#304647': blend(.25), '#355653': blend(.32),
+                    '#ef9e9e': '#ef9e9e' if mode == 'dark' else '#b33543',
+                    '#b33543': '#ef9e9e' if mode == 'dark' else '#b33543',
                     }
     source = ROOT / ('appearance-templates' if theme == 'graphite' else 'themes/' + theme)
     rendered = {}
     for relative in THEME_FILES:
         text = (source / relative).read_text()
-        rendered[relative] = recolor_template(text, theme, replacements, colors, relative)
+        if relative == 'waybar.css' and ui_style == 'nothing':
+            bar_replacements = {**replacements, '#8bbfba':bar_accent, '#a5d2cd':bar_accent, '#b6d8d4':bar_accent}
+            rendered[relative] = recolor_template(text, theme, bar_replacements, bar_palette, relative)
+        else:
+            rendered[relative] = recolor_template(text, theme, replacements, palette, relative)
         if relative == 'plugins/settings.css':
             on_primary = '#000000' if contrast(surface_accent, '#000000') > contrast(surface_accent, '#ffffff') else '#ffffff'
             rendered[relative] += '\n@define-color md_on_primary ' + on_primary + ';\n'
-    inactive = colors['border'][1:] + 'aa' if 'border' in colors else 'd4dee7aa' if theme == 'clear' else '30373fff'
-    rounding = 12 if theme == 'clear' else 8
-    lua = ('hl.config({ general = { col = { active_border = "rgba(' + accent[1:] + 'ff)", '
+    lock = rendered['hyprlock.conf'].replace('font_family = DejaVu Sans', 'font_family = Roboto')
+    lock = lock.replace('background {', 'background {\n    path = ' + lock_background)
+    card_color = palette['surface'][1:] + 'eb'
+    lock += ('\nshape {\n    monitor =\n    size = 430, 430\n    color = rgba(' + card_color + ')\n'
+             '    rounding = 28\n    border_size = 1\n    border_color = rgba(' + palette['border'][1:] + '99)\n'
+             '    position = 0, -10\n    halign = center\n    valign = center\n    zindex = -1\n}\n')
+    lock = lock.replace('background {\n', 'background {\n    zindex = -2\n', 1)
+    rendered['hyprlock.conf'] = lock
+    rendered['plugins/style.css'] += '\n@define-color md_surface ' + palette['background'] + ';\n'
+    if mode == 'light':
+        rendered['plugins/style.css'] = rendered['plugins/style.css'].replace('#ef9e9e', '#b33543')
+    if theme == 'graphite':
+        rendered['waybar.css'] += ('\nwindow#waybar { background: ' + (bar_palette if ui_style == 'nothing' else palette)['background'] + '; color: ' + palette['bar_text'] + '; }\n')
+    if ui_style == 'nothing': ui_themes.render(rendered, palette, mode)
+    inactive = palette['border'][1:] + 'aa'
+    rounding = 8 if ui_style == 'nothing' else 12 if theme == 'clear' else 8
+    lua = ('hl.config({ general = { col = { active_border = "rgba(' + (surface_accent if ui_style == 'nothing' else accent)[1:] + 'ff)", '
            'inactive_border = "rgba(' + inactive + ')" } }, decoration = { rounding = ' + str(rounding) + ' } })\n')
     # Finish reading and validating every source before replacing generated files.
     for relative, content in rendered.items(): atomic(ROOT / relative, content)
     atomic(ROOT / 'accent.lua', lua)
     import branding
     branding.apply(ROOT,live=False)
-    if live: reload_appearance(lua)
+    if live:
+        if ui_style == 'nothing': ui_themes.ensure_fonts(ROOT)
+        reload_appearance(lua)
 
 
 def reload_appearance(lua=None):
@@ -370,15 +444,30 @@ def locked():
         yield
 
 
-def change(path=None, accent=None, output=None, theme=None, live=True, colors=None, reset_colors=False, auto=None):
-    with locked(): change_locked(path, accent, output, theme, live, colors, reset_colors, auto)
+def change(path=None, accent=None, output=None, theme=None, live=True, colors=None, reset_colors=False, auto=None, mode=None, lock_background=None, ui_style=None):
+    with locked(): change_locked(path, accent, output, theme, live, colors, reset_colors, auto, mode, lock_background, ui_style)
 
 
-def change_locked(path=None, accent=None, output=None, theme=None, live=True, colors=None, reset_colors=False, auto=None):
+def change_locked(path=None, accent=None, output=None, theme=None, live=True, colors=None, reset_colors=False, auto=None, mode=None, lock_background=None, ui_style=None):
     state = read_selection()
+    if ui_style is not None:
+        if ui_style not in UI_STYLES: raise ValueError('Неизвестный стиль интерфейса: ' + ui_style)
+        state['ui_style'] = ui_style
     if theme is not None:
         if theme not in THEMES: raise ValueError('Неизвестная тема: ' + theme)
         state['theme'] = theme
+    if mode is not None:
+        if mode not in MODES: raise ValueError('Неизвестный режим: ' + mode)
+        state['mode'] = mode
+    if lock_background is not None:
+        if lock_background:
+            candidate = Path(lock_background).expanduser().resolve()
+            if not candidate.is_file() or candidate.suffix.lower() not in {'.png', '.jpg', '.jpeg', '.webp'}:
+                raise ValueError('Для блокировки выбери PNG, JPEG или WebP')
+            if any(c in str(candidate) for c in ['\n', '\r', '#', '$']): raise ValueError('В пути есть символы конфигурации Hyprlock')
+            with Image.open(candidate) as image: image.verify()
+            lock_background = str(candidate)
+        state['lock_background'] = lock_background
     if path is not None:
         path = Path(path).expanduser().resolve()
         if not path.is_file() or path.suffix.lower() not in STATIC | VIDEO:
@@ -392,7 +481,7 @@ def change_locked(path=None, accent=None, output=None, theme=None, live=True, co
     explicit_auto = accent == 'auto' or auto is True
     if auto is not None: state['wallpaper_colors'] = bool(auto)
     if auto is False and output is not None: state['palette_output'] = output
-    if not explicit_auto and (theme is not None or accent is not None or colors is not None or reset_colors):
+    if not explicit_auto and (mode is not None or accent is not None or colors is not None or reset_colors):
         if state.get('wallpaper_colors'): state['wallpaper_colors'] = False
     automatic = explicit_auto or (path is not None and state.get('wallpaper_colors') and
                                   (output is None or output == state.get('palette_output')))
@@ -402,15 +491,15 @@ def change_locked(path=None, accent=None, output=None, theme=None, live=True, co
             source = next((m['name'] for m in monitors() if m.get('focused')), '') if live else ''
         image = wallpaper_for(source, state)
         analysis = analyze_wallpaper(image)
-        state.update(theme=analysis['theme'], wallpaper_colors=True, palette_output=source,
+        state.update(mode=analysis['mode'], wallpaper_colors=True, palette_output=source,
                      palette_source=str(image), wallpaper_brightness=analysis['brightness'])
         accent = analysis['accent']
     if accent is not None: state['accent'] = accent.lower()
     active_theme = theme_name(state)
     if colors is not None or reset_colors:
-        values = {} if reset_colors else validate_colors(colors, active_theme)
-        state.setdefault('theme_colors', {})[active_theme] = values
-    styled = automatic or accent is not None or theme is not None or colors is not None or reset_colors
+        values = {} if reset_colors else validate_colors(colors, active_theme, theme_mode(state), interface_style(state))
+        state.setdefault('theme_colors', {})[palette_key(active_theme, theme_mode(state), interface_style(state))] = values
+    styled = ui_style is not None or mode is not None or lock_background is not None or automatic or accent is not None or theme is not None or colors is not None or reset_colors
     affected = [SELECTION]
     if styled:
         affected += [ROOT / name for name in [*THEME_FILES, 'accent.lua', 'waybar.json']]
@@ -418,9 +507,12 @@ def change_locked(path=None, accent=None, output=None, theme=None, live=True, co
     try:
         if styled:
             apply_accent(state['accent'], live=False, theme=active_theme,
-                         colors=state.get('theme_colors', {}).get(active_theme, {}))
+                         colors=color_overrides(active_theme, theme_mode(state), state),
+                         mode=theme_mode(state), lock_background=state.get('lock_background', ''), ui_style=interface_style(state))
         atomic(SELECTION, json.dumps(state, ensure_ascii=False, indent=2))
-        if live and styled: reload_appearance()
+        if live and styled:
+            if interface_style(state) == 'nothing': ui_themes.ensure_fonts(ROOT)
+            reload_appearance()
         if live and path is not None and not game_enabled(): start(output=output)
     except Exception:
         for target, content in previous.items():
@@ -450,7 +542,7 @@ def menu(entries, prompt, indices=False, grid=True):
 
 
 def picker():
-    action = menu(['Обои', 'Акцентный цвет', 'Обои + цвет из изображения', 'Тема оболочки'], 'g8d / оформление')
+    action = menu(['Обои', 'Акцентный цвет', 'Обои + цвет из изображения', 'Стиль интерфейса', 'Стиль таскбара'], 'g8d / оформление')
     if action is None: return
     if action in ['Обои', 'Обои + цвет из изображения']:
         connected = monitors()
@@ -479,18 +571,24 @@ def picker():
         if index is None: return
         if not index.isdigit() or not 0 <= int(index) < len(files): return
         change(files[int(index)], 'auto' if action == 'Обои + цвет из изображения' else None, output)
-    elif action == 'Тема оболочки':
+    elif action == 'Стиль интерфейса':
+        styles = list(UI_STYLES)
+        choice = menu([UI_STYLES[key] for key in styles], 'Стиль интерфейса', indices=True, grid=False)
+        if choice is not None and choice.isdigit() and 0 <= int(choice) < len(styles):
+            change(ui_style=styles[int(choice)])
+    elif action == 'Стиль таскбара':
         current = theme_name()
-        keys = list(THEMES)
-        descriptions = {'graphite': 'тёмный графит', 'clear': 'прозрачная панель и светлые меню'}
-        choice = menu([f'{THEMES[key]} — {descriptions[key]}' + (' · текущая' if key == current else '')
-                       for key in keys], 'Тема оболочки', indices=True, grid=False)
-        if choice is not None and choice.isdigit() and 0 <= int(choice) < len(keys):
-            change(theme=keys[int(choice)])
+        styles = list(TASKBAR_STYLES)
+        descriptions = {'graphite': 'сплошная панель', 'clear': 'прозрачная панель'}
+        choice = menu([TASKBAR_STYLES[key] + ' · ' + descriptions[key] +
+                       (' · текущий' if key == current else '') for key in styles],
+                      'Стиль таскбара', indices=True, grid=False)
+        if choice is not None and choice.isdigit() and 0 <= int(choice) < len(styles):
+            change(theme=styles[int(choice)])
     elif action == 'Акцентный цвет':
-        choice = menu(['Тема и цвет из текущих обоев', *PALETTE, 'Свой цвет #RRGGBB'], 'Акцент')
+        choice = menu(['Яркость и цвет из текущих обоев', *PALETTE, 'Свой цвет #RRGGBB'], 'Акцент')
         if choice is None: return
-        accent = 'auto' if choice == 'Тема и цвет из текущих обоев' else PALETTE.get(choice)
+        accent = 'auto' if choice == 'Яркость и цвет из текущих обоев' else PALETTE.get(choice)
         if choice == 'Свой цвет #RRGGBB': accent = menu([], 'Введи #RRGGBB')
         if accent is not None: change(accent=accent)
 
@@ -500,7 +598,10 @@ if __name__ == '__main__':
     parser.add_argument('action', nargs='?', default='picker', choices=['picker', 'start', 'suspend', 'resume', 'apply'])
     parser.add_argument('--file')
     parser.add_argument('--accent')
-    parser.add_argument('--theme', choices=list(THEMES), help='Shell theme; keeps wallpaper and accent')
+    parser.add_argument('--theme', '--taskbar-style', dest='theme', choices=list(TASKBAR_STYLES), help='Taskbar style: Graphite or Clear')
+    parser.add_argument('--ui-style', choices=list(UI_STYLES), help='Interface design: Material or Nothing')
+    parser.add_argument('--mode', choices=list(MODES))
+    parser.add_argument('--lock-background', help='PNG/JPEG/WebP path, empty string restores a solid background')
     parser.add_argument('--no-live', action='store_true', help='Generate and save without touching the running session')
     parser.add_argument('--colors', help='JSON object of custom theme color roles')
     parser.add_argument('--reset-colors', action='store_true', help='Restore the active theme palette')
@@ -512,7 +613,8 @@ if __name__ == '__main__':
         elif arguments.action == 'apply':
             change(arguments.file, arguments.accent, arguments.output, arguments.theme, not arguments.no_live,
                    json.loads(arguments.colors) if arguments.colors is not None else None, arguments.reset_colors,
-                   arguments.auto_theme == 'on' if arguments.auto_theme is not None else None)
+                   arguments.auto_theme == 'on' if arguments.auto_theme is not None else None,
+                   arguments.mode, arguments.lock_background, arguments.ui_style)
         else:
             with locked():
                 if arguments.action in ['start', 'resume']: start(force=arguments.action == 'resume')

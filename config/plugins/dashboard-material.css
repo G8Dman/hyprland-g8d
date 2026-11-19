@@ -1,0 +1,67 @@
+/* Material You dashboard: shared semantic palette, native navigation and focus. */
+window.g8d-popup.material-dashboard {
+    background-color: @qs_surface; color: @qs_on_surface;
+    border: 1px solid @qs_outline; border-radius: 28px;
+    font-family: Roboto, sans-serif; font-size: 14px;
+}
+.material-dashboard .body { padding: 20px; }
+.material-dashboard label { color: @qs_on_surface; }
+.material-dashboard .muted { color: @qs_on_surface_variant; font-size: 12px; }
+.material-dashboard .title { font-size: 22px; font-weight: 500; color: @qs_on_surface; }
+.material-dashboard .value { color: @qs_primary; font-weight: 500; }
+.material-dashboard .dashboard-card {
+    background: transparent; padding: 4px; border: none; border-radius: 0;
+}
+.material-dashboard stackswitcher { background-color: @qs_container; border-radius: 20px; padding: 4px; }
+.material-dashboard button {
+    background-image: none; background-color: @qs_container; color: @qs_on_surface;
+    border: 1px solid transparent; border-radius: 20px; padding: 10px 16px;
+    box-shadow: none; text-shadow: none; min-height: 20px;
+}
+.material-dashboard button:hover { background-color: mix(@qs_container, @qs_primary, 0.12); }
+.material-dashboard button:active { background-color: mix(@qs_container, @qs_primary, 0.2); }
+.material-dashboard button:focus { border-color: @qs_primary; }
+.material-dashboard button:disabled { opacity: 0.45; }
+.material-dashboard stackswitcher button { background: transparent; border-radius: 16px; padding: 10px 24px; }
+.material-dashboard stackswitcher button:checked {
+    background-color: @qs_primary_container; color: @qs_on_primary_container;
+    box-shadow: inset 0 -3px @qs_primary; font-weight: 500;
+}
+.material-dashboard stackswitcher button:checked label { color: @qs_on_primary_container; }
+.material-dashboard calendar {
+    background-color: @qs_container; color: @qs_on_surface;
+    border: none; border-radius: 20px; padding: 14px;
+}
+.material-dashboard calendar.header { background-color: transparent; color: @qs_on_surface; }
+.material-dashboard calendar:selected { background-color: @qs_primary; color: @md_surface; border-radius: 12px; }
+.material-dashboard calendar.highlight { color: @qs_primary; }
+.material-dashboard entry {
+    background-image: none; background-color: @qs_container; color: @qs_on_surface;
+    border: 1px solid @qs_outline; border-radius: 12px; padding: 12px;
+    box-shadow: none; caret-color: @qs_primary;
+}
+.material-dashboard entry:focus { border-color: @qs_primary; }
+.material-dashboard entry selection { background-color: @qs_primary_container; color: @qs_on_primary_container; }
+.material-dashboard scale trough { background-color: @qs_container; border-radius: 6px; }
+.material-dashboard scale highlight { background-color: @qs_primary; }
+.material-dashboard scale slider { background-color: @qs_primary; border-color: @qs_primary; }
+.material-dashboard scrollbar slider { background-color: @qs_outline; border-radius: 6px; }
+
+/* Music: actual artwork and track information, one primary playback action. */
+.material-dashboard .music-view .media-source { font-size: 12px; color: @qs_on_surface_variant; }
+.material-dashboard .music-view .media-title { font-family: Roboto, sans-serif; font-size: 24px; font-weight: 500; color: @qs_on_surface; }
+.material-dashboard .music-view .media-artist { font-size: 14px; color: @qs_on_surface_variant; }
+.material-dashboard .music-view .media-status, .material-dashboard .music-view .media-time { font-size: 12px; color: @qs_on_surface_variant; }
+.material-dashboard .music-view .media-art { background: @qs_container; border-radius: 12px; color: @qs_on_surface_variant; }
+.material-dashboard .music-view button.media-icon { min-height: 0; padding: 0; border-radius: 24px; background: transparent; }
+.material-dashboard .music-view button.media-play { min-height: 0; padding: 0; border-radius: 30px; background: @qs_primary_container; color: @qs_on_primary_container; }
+.material-dashboard .music-view button.media-play:hover { background: mix(@qs_primary_container, @qs_primary, 0.15); }
+.material-dashboard .music-view button.media-icon:hover { background: @qs_container; }
+.material-dashboard .music-view button.media-seek { padding: 0 8px; min-height: 36px; background: transparent; font-size: 12px; }
+.material-dashboard .music-view button.media-preset { background: transparent; border: 1px solid @qs_outline; border-radius: 20px; font-weight: 400; }
+.material-dashboard .music-view button.media-preset:hover { background: @qs_container; }
+.material-dashboard .music-view button.media-launch { background: transparent; color: @qs_primary; padding: 8px 12px; }
+.material-dashboard .music-view .media-progress trough { min-height: 4px; border: none; border-radius: 2px; background: @qs_container; }
+.material-dashboard .music-view .media-progress progress { min-height: 4px; border: none; border-radius: 2px; background: @qs_primary; }
+.material-dashboard .music-view .media-notice { font-size: 12px; color: @qs_on_surface_variant; }
+.material-dashboard .music-view .media-notice.error { color: @qs_error; }

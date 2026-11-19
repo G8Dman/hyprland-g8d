@@ -6,6 +6,7 @@ import json
 import os
 from pathlib import Path
 import signal
+import cairo
 import socket
 import subprocess
 import sys
@@ -18,6 +19,7 @@ from gi.repository import Gdk, GdkPixbuf, GLib, Gtk, GtkLayerShell as Layer, Pan
 from data import Collector, media_control
 import gaming
 import appearance
+import ui_themes
 import branding
 import brightness
 from window_switcher import WindowSwitcher
@@ -107,28 +109,30 @@ class Popup:
         self.body = box(spacing=12)
         self.body.get_style_context().add_class('body')
         popup_area = Gtk.EventBox()
-        popup_area.set_visible_window(True)
+        popup_area.set_visible_window(False)
         popup_area.add(self.body)
         self.window.add(popup_area)
-        self.bind_pointer(popup_area, 'popup')
+        # Track the toplevel surface; the transparent EventBox has no native window.
+        self.bind_pointer(self.window, 'popup')
         self.trigger = self.surface(monitor, f'g8d-trigger-{kind}', popup=False)
         self.trigger.set_size_request(44 if kind == 'profile' else 112, 36)
         if kind == 'profile': Layer.set_anchor(self.trigger, Layer.Edge.RIGHT, True)
         area = Gtk.EventBox()
         area.set_visible_window(False)
         self.trigger.add(area)
-        self.bind_pointer(area, 'trigger')
-        area.connect('button-press-event', self.click)
+        self.bind_pointer(self.trigger, 'trigger')
+        self.trigger.connect('button-press-event', self.click)
         self.trigger.show_all()
         self.render({})
 
     def surface(self, monitor, namespace, popup):
         window = Gtk.Window(type=Gtk.WindowType.TOPLEVEL)
         window.set_decorated(False)
-        window.set_app_paintable(not popup)
+        window.set_app_paintable(True)
         visual = window.get_screen().get_rgba_visual()
         if visual: window.set_visual(visual)
         window.get_style_context().add_class('g8d-popup' if popup else 'g8d-trigger')
+        if popup: window.connect('draw', self.draw_surface)
         Layer.init_for_window(window)
         Layer.set_namespace(window, namespace)
         Layer.set_monitor(window, monitor)
@@ -139,6 +143,21 @@ class Popup:
         Layer.set_exclusive_zone(window, -1)
         Layer.set_anchor(window, Layer.Edge.TOP, True)
         return window
+
+    @staticmethod
+    def draw_surface(window, context):
+        # Clear the entire RGBA buffer, then let GTK paint the CSS rounded surface.
+        # A default GtkWindow background otherwise leaves an opaque rectangle behind it.
+        context.save()
+        context.set_operator(cairo.OPERATOR_SOURCE)
+        context.set_source_rgba(0, 0, 0, 0)
+        context.paint()
+        context.restore()
+        style = window.get_style_context()
+        width, height = window.get_allocated_width(), window.get_allocated_height()
+        Gtk.render_background(style, context, 0, 0, width, height)
+        Gtk.render_frame(style, context, 0, 0, width, height)
+        return False
 
     def bind_pointer(self, widget, region):
         widget.add_events(Gdk.EventMask.ENTER_NOTIFY_MASK | Gdk.EventMask.LEAVE_NOTIFY_MASK | Gdk.EventMask.BUTTON_PRESS_MASK)
@@ -261,71 +280,7 @@ class Popup:
             self.app.notify('Не удалось сохранить настройку эффекта курсора')
 
     def render_music(self, data, parent):
-        players = data.get('media', [])
-        heading = self.dashboard.music_header
-        yandex = next((p for p in players if p.get('yandex')), None)
-        header = box(False)
-        header.pack_start(Gtk.Image.new_from_icon_name('yandexmusic', Gtk.IconSize.LARGE_TOOLBAR), False, False, 0)
-        header.pack_start(label('Яндекс Музыка', 'heading'), True, True, 0)
-        launch_button = button('Показать приложение' if yandex else 'Запустить плеер',
-                               self.open_yandex_music if yandex else lambda: self.play_yandex('background'))
-        launch_button.set_tooltip_text('Официальное приложение Яндекс Музыки. Фоновый плеер работает отдельно.')
-        launch_button.set_sensitive(not self.app.music_pending)
-        header.pack_end(launch_button, False, False, 0)
-        heading.pack_start(header, False, False, 0)
-        presets = box(False)
-        for title, action in [('Моя волна', 'wave'), ('Любимые треки', 'favorites')]:
-            preset = button(title, lambda a=action: self.play_yandex(a))
-            preset.set_sensitive(not self.app.music_pending)
-            presets.pack_start(preset, True, True, 0)
-        heading.pack_start(presets, False, False, 0)
-        if self.app.music_pending:
-            heading.pack_start(label(self.app.music_message, 'muted'), False, False, 0)
-        elif self.app.music_error:
-            heading.pack_start(label(self.app.music_error, 'muted', True), False, False, 0)
-        selected = next((p for p in players if p['bus'] == self.preferred_player),
-                        yandex or (players[0] if players else None))
-        self.dashboard.record.update(selected)
-        if not selected:
-            self.player = None
-            parent.pack_start(label('Сейчас ничего не играет', 'muted'), False, False, 0)
-        else:
-            self.player = selected['bus']
-            parent.pack_start(label(selected['title'], 'title', True), False, False, 0)
-            parent.pack_start(label(selected['artist'] or selected['album'] or selected['player'], 'muted'), False, False, 0)
-            row(parent, selected['player'], {'Playing': 'Играет', 'Paused': 'Пауза', 'Stopped': 'Остановлено'}.get(selected['status'], selected['status']))
-            if selected.get('yandex') and not selected['play'] and not selected['pause']:
-                parent.pack_start(label('Выберите трек или включите «Мою волну» в приложении. '
-                                        'Затем управляйте музыкой здесь.', 'muted', True), False, False, 0)
-            if len(players) > 1:
-                selector = Gtk.ComboBoxText()
-                selector.append('auto', 'Авто · Яндекс Музыка' if yandex else 'Авто · сейчас играет')
-                for player in players: selector.append(player['bus'], player['player'])
-                selector.set_active_id(self.preferred_player or 'auto')
-                selector.connect('changed', self.select_player)
-                parent.pack_start(selector, False, False, 0)
-            length = selected['length']
-            if length:
-                progress = Gtk.ProgressBar()
-                progress.set_fraction(max(0, min(1, selected['position'] / length)))
-                parent.pack_start(progress, False, False, 0)
-                def clock(us): return f'{int(us / 60000000)}:{int(us / 1000000) % 60:02}'
-                row(parent, clock(selected['position']), clock(length), 'muted')
-            controls = box(False)
-            for text, method, enabled in [('⏮', 'Previous', selected['previous']),
-                                          ('Пауза' if selected['status'] == 'Playing' else 'Играть', 'PlayPause', selected['pause'] if selected['status'] == 'Playing' else selected['play']),
-                                          ('⏭', 'Next', selected['next'])]:
-                widget = button(text, lambda m=method, n=self.player: self.app.music(n, m))
-                widget.set_sensitive(selected['control'] and enabled and not self.app.music_pending)
-                controls.pack_start(widget, True, True, 0)
-            parent.pack_start(controls, False, False, 0)
-            if selected.get('seek'):
-                seek = box(False)
-                for text, method in [('−10 секунд', 'SeekBack'), ('+10 секунд', 'SeekForward')]:
-                    control = button(text, lambda m=method, n=self.player: self.app.music(n, m))
-                    control.set_sensitive(not self.app.music_pending)
-                    seek.pack_start(control, True, True, 0)
-                parent.pack_start(seek, False, False, 0)
+        self.dashboard.music_view.update(data)
 
     def open_yandex_music(self):
         self.hide()
@@ -368,9 +323,15 @@ class App:
         css.load_from_path(str(appearance.ROOT / 'plugins/style.css'))
         Gtk.StyleContext.add_provider_for_screen(Gdk.Screen.get_default(), css, Gtk.STYLE_PROVIDER_PRIORITY_APPLICATION)
         Gtk.IconTheme.get_default().prepend_search_path(str(ROOT / 'icons'))
+        self.dashboard_css = Gtk.CssProvider()
+        self.dashboard_css.load_from_path(str(ROOT / 'dashboard-material.css'))
+        Gtk.StyleContext.add_provider_for_screen(Gdk.Screen.get_default(), self.dashboard_css, Gtk.STYLE_PROVIDER_PRIORITY_APPLICATION + 1)
         self.quick_css = Gtk.CssProvider()
         self.quick_css.load_from_path(str(ROOT / 'quick-settings.css'))
         Gtk.StyleContext.add_provider_for_screen(Gdk.Screen.get_default(), self.quick_css, Gtk.STYLE_PROVIDER_PRIORITY_APPLICATION + 1)
+        self.interface_css = Gtk.CssProvider()
+        Gtk.StyleContext.add_provider_for_screen(Gdk.Screen.get_default(), self.interface_css, Gtk.STYLE_PROVIDER_PRIORITY_APPLICATION + 2)
+        self.reload_interface()
         self.display = Gdk.Display.get_default()
         self.display.connect('monitor-added', lambda *_: self.monitors_changed())
         self.display.connect('monitor-removed', lambda *_: self.monitors_changed())
@@ -475,11 +436,20 @@ class App:
             self.notify(f'Игровой режим: {exc}')
         return False
 
+    def reload_interface(self):
+        if appearance.interface_style() == 'nothing':
+            self.interface_css.load_from_path(str(ROOT / 'nothing.css'))
+        else: self.interface_css.load_from_data(b'')
+        for popup in self.popups:
+            if popup.dashboard: popup.dashboard.restyle()
+
     def message(self, *_):
         try:
             message = json.loads(self.socket.recv(65536))
             if "switcher" in message: self.switcher.update(message["switcher"])
-            if message.get('appearance') == 'reload': self.css.load_from_path(str(appearance.ROOT / 'plugins/style.css'))
+            if message.get('appearance') == 'reload':
+                self.css.load_from_path(str(appearance.ROOT / 'plugins/style.css'))
+                self.reload_interface()
             if message.get('branding') == 'reload': self.build_game_bars()
             if message.get('game') == 'toggle': self.toggle_game()
             if isinstance(message.get('cursor_effect'), bool): self.fracture.set_enabled(message['cursor_effect'], persist=False)
