@@ -14,11 +14,20 @@ cleanup() {
 trap cleanup EXIT
 trap 'exit 0' TERM INT
 spawn() { "$@" & pids+=("$!"); }
-python3 "$root/plugins/appearance.py" start
+start_wallpaper() {
+    python3 "$root/plugins/appearance.py" start &
+    local startup=$!
+    trap 'kill "$startup" 2>/dev/null || true; exit 0' TERM INT
+    if ! wait "$startup"; then
+        echo 'Wallpaper startup failed; using a solid background.' >&2
+        exec env G8D_WALLPAPER=1 G8D_WALLPAPER_OUTPUT= swaybg -c '#161b20'
+    fi
+}
 spawn waybar -c "$root/waybar.json" -s "$root/waybar.css"
 spawn python3 "$root/plugins/panels.py"
 spawn mako -c "$root/mako.conf"
 spawn hypridle -c "$root/hypridle.conf"
+spawn start_wallpaper
 if [[ "${G8D_PREVIEW:-0}" != 1 ]]; then
     spawn /usr/lib/hyprpolkitagent/hyprpolkitagent
     # Translate legacy X11 tray icons (Qt/XEmbed, Wine) into StatusNotifier items.

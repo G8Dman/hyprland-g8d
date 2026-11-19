@@ -12,6 +12,7 @@ import re
 import signal
 import socket
 import subprocess
+import sys
 import time
 
 from PIL import Image
@@ -234,7 +235,7 @@ def game_enabled():
     except (OSError, ValueError): return False
 
 
-def start(force=False, output=None):
+def start(force=False, output=None, *, fallback=True):
     if game_enabled() and not force: return
     connected = [monitor['name'] for monitor in monitors()]
     # Migrate a previous renderer spanning all outputs while keeping its image.
@@ -248,22 +249,47 @@ def start(force=False, output=None):
         output = None
     for name in list(renderer_state()):
         if name not in connected: suspend(name)
-    for name in connected:
-        if output is None or name == output: start_output(name)
+    bundled = ROOT / 'wallpaper.png'
+    outputs = [name for name in connected if output is None or name == output]
+    failures = []
+    for name in outputs:
+        if not fallback:
+            start_output(name, wallpaper_for(name))
+            continue
+        try:
+            path = wallpaper_for(name)
+        except (AttributeError, KeyError, TypeError, ValueError) as exc:
+            print(f'Wallpaper selection on {name}: {exc}', file=sys.stderr)
+            path = bundled
+        candidates = (bundled, None) if path == bundled else (path, bundled, None)
+        for candidate in candidates:
+            try:
+                start_output(name, candidate)
+                break
+            except (RuntimeError, OSError, ValueError, Image.DecompressionBombError, psutil.Error) as exc:
+                print(f'Wallpaper on {name} ({candidate or "solid background"}): {exc}', file=sys.stderr)
+        else:
+            failures.append(name)
+    if failures and len(failures) == len(outputs):
+        raise RuntimeError('Не удалось запустить фон на экранах: ' + ', '.join(failures))
 
 
-def start_output(output):
-    path = wallpaper_for(output)
-    if not path.is_file(): path = ROOT / 'wallpaper.png'
+def start_output(output, path):
+    if path is not None and not path.is_file():
+        raise FileNotFoundError(path)
+    source = str(path) if path is not None else None
     current = renderer_state().get(output, {})
-    if current.get('file') == str(path):
+    if current.get('file') == source:
         try:
             process = psutil.Process(current['pid'])
             if process.is_running() and process.create_time() == current.get('created') and process.environ().get('G8D_WALLPAPER_OUTPUT') == output:
                 return
         except (psutil.Error, OSError, KeyError): pass
+    is_animated = path is not None and animated(path)
     suspend(output)
-    if animated(path):
+    if path is None:
+        arguments = ['swaybg', '-o', output, '-c', '#161b20']
+    elif is_animated:
         arguments = ['mpvpaper', '-p', '-a', 'FULL', '-o',
                      'no-config no-audio aid=no mute=yes volume=0 loop-file=inf panscan=1 osc=no osd-level=0 hwdec=auto-safe terminal=no msg-level=all=warn '
                      f'input-ipc-server={mpv_socket(output)}', output, str(path)]
@@ -284,11 +310,15 @@ def start_output(output):
                                    stdout=log, stderr=log, start_new_session=True)
     time.sleep(.35)
     if process.poll() is not None: raise RuntimeError('Обои не запустились; см. ~/.local/state/hyprland-g8d/wallpaper.log')
-    records = renderer_state()
-    records[output] = {'pid': process.pid, 'created': psutil.Process(process.pid).create_time(),
-                       'file': str(path), 'animated': animated(path), 'argv': arguments,
-                       'socket': str(mpv_socket(output)) if animated(path) else None}
-    atomic(RENDER_STATE, json.dumps({'outputs': records}))
+    try:
+        records = renderer_state()
+        records[output] = {'pid': process.pid, 'created': psutil.Process(process.pid).create_time(),
+                           'file': source, 'animated': is_animated, 'argv': arguments,
+                           'socket': str(mpv_socket(output)) if is_animated else None}
+        atomic(RENDER_STATE, json.dumps({'outputs': records}))
+    except (OSError, psutil.Error):
+        process.terminate()
+        raise
 
 
 def theme_name(state=None):
@@ -513,7 +543,7 @@ def change_locked(path=None, accent=None, output=None, theme=None, live=True, co
         if live and styled:
             if interface_style(state) == 'nothing': ui_themes.ensure_fonts(ROOT)
             reload_appearance()
-        if live and path is not None and not game_enabled(): start(output=output)
+        if live and path is not None and not game_enabled(): start(output=output, fallback=False)
     except Exception:
         for target, content in previous.items():
             if content is None: target.unlink(missing_ok=True)
