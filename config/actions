@@ -4,6 +4,8 @@ root="${G8D_CONFIG_DIR:-$HOME/.config/hyprland-g8d}"
 menu() { rofi -no-config -theme "$root/rofi.rasi" "$@"; }
 case "${1:-help}" in
     settings) exec python3 "$root/plugins/settings.py" ;;
+    updates) exec python3 "$root/plugins/settings.py" --about ;;
+    volume) exec python3 "$root/plugins/panels.py" sound ;;
     files) exec xdg-open "$HOME" ;;
     browser) exec xdg-open https://www.startpage.com ;;
     terminal) exec kitty --config "$root/kitty.conf" ;;

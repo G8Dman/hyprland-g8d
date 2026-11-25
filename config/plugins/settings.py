@@ -107,7 +107,9 @@ def row(parent, title, description='', widget=None):
 
 class Settings(Gtk.Application):
     def __init__(self):
-        super().__init__(application_id='io.github.g8d.Settings', flags=Gio.ApplicationFlags.FLAGS_NONE)
+        super().__init__(application_id='io.github.g8d.Settings', flags=Gio.ApplicationFlags.HANDLES_COMMAND_LINE)
+        self.add_main_option('about', 0, GLib.OptionFlags.NONE, GLib.OptionArg.NONE, 'Открыть раздел «О системе»', None)
+        self.connect('command-line', self.command_line)
         self.window = None
         self.pool = ThreadPoolExecutor(max_workers=3, thread_name_prefix='g8d-settings')
         self.screen_snapshot = None
@@ -119,6 +121,13 @@ class Settings(Gtk.Application):
         self.volume_timer = 0
         self.connect('activate', self.activate)
         self.connect('shutdown', self.shutdown)
+
+    def command_line(self, _, command):
+        self.activate()
+        if command.get_options_dict().contains('about'):
+            self.search.set_text('')
+            self.list.select_row(next(row for row in self.list.get_children() if row.page == 'about'))
+        return 0
 
     def work(self, operation, done=None, success=''):
         future = self.pool.submit(operation)
@@ -1134,5 +1143,6 @@ class Settings(Gtk.Application):
 
 
 if __name__=='__main__':
+    import sys
     app=Settings()
-    raise SystemExit(app.run(None))
+    raise SystemExit(app.run(sys.argv))

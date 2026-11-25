@@ -64,13 +64,62 @@ window.g8d-popup, window.g8d-popup.material-dashboard, window.g8d-popup.quick-pr
 .g8d-popup.quick-profile button { padding: 0; min-height: 0; border: 1px solid transparent; }
 .g8d-popup.quick-profile button.quick-tile, .g8d-popup.quick-profile button.quick-detail { background: @nd_surface; border-color: @nd_border; border-radius: 8px; }
 .g8d-popup.quick-profile button.quick-icon { border-radius: 24px; }
-.g8d-popup.quick-profile button.quick-tile:checked { background: @nd_text; color: @nd_bg; border-color: @nd_text; }
-.g8d-popup.quick-profile button.quick-tile:checked:hover { background: @nd_display; }
+.g8d-popup.quick-profile button.quick-tile:checked {
+    background: @nd_selection; color: @nd_quick_accent; border-color: @nd_border;
+}
+.g8d-popup.quick-profile button.quick-tile:checked:hover { background: mix(@nd_selection, @nd_control, 0.4); }
 .g8d-popup.quick-profile button:hover { background: @nd_control; border-color: @nd_muted; }
 .g8d-popup.quick-profile button:focus { border-color: @nd_text; }
 .g8d-popup.quick-profile .quick-name { font-family: "Space Mono", "DejaVu Sans Mono", monospace; font-size: 14px; font-weight: 400; }
 .g8d-popup.quick-profile .quick-footer, .g8d-popup.quick-profile .quick-percent { color: @nd_muted; font-size: 12px; }
 .g8d-popup.quick-profile .quick-error { color: @nd_signal; }
+.g8d-popup.quick-profile .quick-bluetooth .quick-bt-status,
+.g8d-popup.quick-profile .quick-bluetooth .quick-bt-group,
+.g8d-popup.quick-profile .quick-bluetooth .quick-bt-battery { color: @nd_muted; }
+.g8d-popup.quick-profile .quick-bluetooth .quick-bt-action { color: @nd_text; }
+.g8d-popup.quick-profile .quick-bluetooth .quick-bt-error { color: @nd_signal; }
+.g8d-popup.quick-profile .quick-bluetooth button.quick-bt-primary {
+    background-color: @nd_text; color: @nd_bg; border-radius: 8px; padding: 0 10px;
+}
+.g8d-popup.quick-profile .quick-bluetooth button.quick-bt-primary:hover { background-color: @nd_display; }
+.g8d-popup.quick-profile .quick-bluetooth button.quick-bt-device {
+    border-radius: 6px; padding: 0 8px; border-bottom-color: @nd_border;
+}
+.g8d-popup.quick-profile .quick-bluetooth button.quick-bt-device:focus,
+.g8d-popup.quick-profile .quick-bluetooth button.quick-bt-primary:focus { border-color: @nd_muted; }
+.g8d-popup.quick-profile .quick-bluetooth .quick-bt-confirm {
+    background-color: @nd_surface; border-color: @nd_border; border-radius: 8px;
+}
+.g8d-popup.quick-profile .quick-audio .quick-audio-label,
+.g8d-popup.quick-profile .quick-audio .quick-audio-notice { color: @nd_muted; }
+.g8d-popup.quick-profile .quick-audio button.quick-audio-mute,
+.g8d-popup.quick-profile .quick-audio button.quick-audio-expand,
+.g8d-popup.quick-profile .quick-audio combobox button {
+    background-color: @nd_surface;
+    border-color: @nd_border;
+    border-radius: 8px;
+}
+.g8d-popup.quick-profile .quick-audio button.quick-audio-mute:hover,
+.g8d-popup.quick-profile .quick-audio button.quick-audio-expand:hover,
+.g8d-popup.quick-profile .quick-audio combobox button:hover { background-color: @nd_control; }
+.g8d-popup.quick-profile .quick-audio button.quick-audio-expand:checked {
+    background-color: @nd_text; color: @nd_bg; border-color: @nd_text;
+}
+.g8d-popup.quick-profile .quick-audio combobox button:focus,
+.g8d-popup.quick-profile .quick-audio button:focus { border-color: @nd_text; }
+.g8d-popup.quick-profile .quick-audio button.quick-audio-expand,
+.g8d-popup.quick-profile .quick-audio combobox button { padding: 0 10px; }
+.g8d-popup.quick-profile .quick-audio combobox button { min-height: 36px; }
+.g8d-popup.quick-profile .quick-audio .quick-audio-app combobox button { min-height: 30px; }
+.g8d-popup.quick-profile .quick-audio .quick-audio-app { border-color: @nd_border; }
+.g8d-popup.quick-profile .power-profiles .power-segments {
+    background-color: @nd_surface; border: 1px solid @nd_border; border-radius: 18px;
+}
+.g8d-popup.quick-profile .power-profiles .power-segments button { border-radius: 15px; }
+.g8d-popup.quick-profile .power-profiles .power-segments button:checked {
+    background-color: @nd_selection; color: @nd_quick_accent; border-color: @nd_border;
+}
+.g8d-popup.quick-profile .power-profiles .power-status { color: @nd_muted; }
 /* Settings: technical manual hierarchy, one page title, no decorative cards. */
 .g8d-settings { background: @nd_bg; color: @nd_text; }
 .g8d-settings headerbar { background: @nd_bg; color: @nd_text; border: none; box-shadow: none; }
@@ -116,3 +165,19 @@ window.g8d-popup, window.g8d-popup.material-dashboard, window.g8d-popup.quick-pr
 .material-dashboard .music-view .media-progress progress { min-height: 3px; background: @nd_text; border: none; border-radius: 0; }
 .material-dashboard .music-view .media-notice { font-family: "Space Mono", "DejaVu Sans Mono", monospace; font-size: 12px; color: @nd_muted; }
 .material-dashboard .music-view .media-notice.error { color: @nd_signal; }
+.g8d-popup.quick-profile .quick-wifi .quick-wifi-status,
+.g8d-popup.quick-profile .quick-wifi .quick-wifi-detail { color: @nd_muted; }
+.g8d-popup.quick-profile .quick-wifi .quick-wifi-status.quick-error { color: @nd_signal; }
+.g8d-popup.quick-profile .quick-wifi button.quick-wifi-primary,
+.g8d-popup.quick-profile .quick-wifi button.quick-wifi-active {
+    background-color: @nd_text; color: @nd_bg; border-radius: 8px;
+}
+.g8d-popup.quick-profile .quick-wifi button.quick-wifi-active .quick-wifi-detail { color: @nd_bg; }
+.g8d-popup.quick-profile .quick-wifi button.quick-wifi-primary:hover { background-color: @nd_display; }
+.g8d-popup.quick-profile .quick-wifi button.quick-wifi-row { border-radius: 6px; border-bottom-color: @nd_border; }
+.g8d-popup.quick-profile .quick-wifi button.quick-wifi-row:focus,
+.g8d-popup.quick-profile .quick-wifi entry:focus { border-color: @nd_text; }
+.g8d-popup.quick-profile .quick-wifi .quick-wifi-prompt,
+.g8d-popup.quick-profile .quick-wifi entry {
+    background-color: @nd_surface; border-color: @nd_border; color: @nd_text; border-radius: 8px;
+}

@@ -388,6 +388,7 @@ def apply_accent(accent, live=True, theme=None, colors=None, mode=None, lock_bac
         if weakest(color) >= 4.5: break
         ink = [round(c * .9 + end * .1) if abs(end - c) > 9 else end for c, end in zip(ink, target)]
     surface_accent = '#' + ''.join(f'{c:02x}' for c in ink)
+    quick_accent = surface_accent
     bar_palette = {**default_colors(theme, mode), **{key:value for key,value in colors.items() if key == 'bar_text'}}
     bar_ink = list(channels)
     bar_surfaces = [bar_palette[key] for key in ['background','surface','control','selection']]
@@ -430,7 +431,9 @@ def apply_accent(accent, live=True, theme=None, colors=None, mode=None, lock_bac
         rendered['plugins/style.css'] = rendered['plugins/style.css'].replace('#ef9e9e', '#b33543')
     if theme == 'graphite':
         rendered['waybar.css'] += ('\nwindow#waybar { background: ' + (bar_palette if ui_style == 'nothing' else palette)['background'] + '; color: ' + palette['bar_text'] + '; }\n')
-    if ui_style == 'nothing': ui_themes.render(rendered, palette, mode)
+    if ui_style == 'nothing':
+        ui_themes.render(rendered, palette, mode)
+        rendered['plugins/style.css'] += '\n@define-color nd_quick_accent ' + quick_accent + ';\n'
     inactive = palette['border'][1:] + 'aa'
     rounding = 8 if ui_style == 'nothing' else 12 if theme == 'clear' else 8
     lua = ('hl.config({ general = { col = { active_border = "rgba(' + (surface_accent if ui_style == 'nothing' else accent)[1:] + 'ff)", '

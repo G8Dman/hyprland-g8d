@@ -21,7 +21,7 @@ window.g8d-popup.quick-profile {
 .quick-profile button.quick-detail { background-color: @qs_container; border-radius: 12px; }
 .quick-profile button:hover { background-color: mix(@qs_container, @qs_primary, 0.08); border-color: transparent; }
 .quick-profile button.quick-tile:checked {
-    background-color: @qs_primary_container; color: @qs_on_primary_container;
+    background-color: @qs_primary_container; color: @qs_primary;
 }
 .quick-profile button.quick-tile:checked:hover { background-color: mix(@qs_primary_container, @qs_primary, 0.1); }
 .quick-profile button:active { background-color: mix(@qs_primary_container, @qs_primary, 0.18); }
@@ -34,3 +34,110 @@ window.g8d-popup.quick-profile {
 .quick-profile scale:focus slider { box-shadow: 0 0 0 3px alpha(@qs_primary, 0.25); }
 .quick-profile scale:disabled highlight, .quick-profile scale:disabled slider { background-color: @qs_outline; }
 .quick-profile scale:disabled { opacity: 0.5; }
+.quick-bluetooth .quick-bt-status, .quick-bluetooth .quick-bt-error { padding: 0 4px; }
+.quick-bluetooth .quick-bt-status, .quick-bluetooth .quick-bt-group {
+    color: @qs_on_surface_variant;
+    font-size: 12px;
+}
+.quick-bluetooth .quick-bt-group { padding: 9px 8px 4px; }
+.quick-bluetooth .quick-bt-name { font-weight: bold; }
+.quick-bluetooth .quick-bt-battery { color: @qs_on_surface_variant; font-size: 11px; }
+.quick-bluetooth .quick-bt-action { color: @qs_primary; font-size: 12px; }
+.quick-bluetooth .quick-bt-error { color: @qs_error; }
+.quick-profile .quick-bluetooth button.quick-bt-primary {
+    padding: 0 10px;
+    background-color: @qs_primary_container;
+    color: @qs_on_primary_container;
+    border-radius: 22px;
+}
+.quick-profile .quick-bluetooth button.quick-bt-primary:hover {
+    background-color: mix(@qs_primary_container, @qs_primary, 0.15);
+}
+.quick-profile .quick-bluetooth button.quick-bt-device {
+    border-radius: 10px;
+    padding: 0 8px;
+    border-bottom-color: alpha(@qs_outline, 0.5);
+}
+.quick-profile .quick-bluetooth button.quick-bt-device:focus { border-color: @qs_primary; }
+.quick-bluetooth .quick-bt-confirm {
+    padding: 10px;
+    background-color: @qs_container;
+    border: 1px solid @qs_outline;
+    border-radius: 12px;
+}
+.quick-audio .quick-audio-label, .quick-audio .quick-audio-notice {
+    color: @qs_on_surface_variant;
+    font-size: 12px;
+}
+.quick-profile .quick-audio button.quick-audio-mute,
+.quick-profile .quick-audio button.quick-audio-expand,
+.quick-profile .quick-audio combobox button {
+    background-color: @qs_container;
+    border-radius: 12px;
+}
+.quick-profile .quick-audio button.quick-audio-expand,
+.quick-profile .quick-audio combobox button { padding: 0 10px; }
+.quick-profile .quick-audio combobox button { min-height: 38px; }
+.quick-profile .quick-audio button.quick-audio-mute:hover,
+.quick-profile .quick-audio button.quick-audio-expand:hover,
+.quick-profile .quick-audio combobox button:hover {
+    background-color: mix(@qs_container, @qs_primary, 0.15);
+}
+.quick-profile .quick-audio button.quick-audio-expand:checked {
+    background-color: @qs_primary_container;
+    color: @qs_on_primary_container;
+}
+.quick-audio .quick-audio-app {
+    padding: 8px 4px;
+    border-bottom: 1px solid @qs_outline;
+}
+.quick-audio .quick-audio-app-name { font-weight: bold; }
+.quick-profile .quick-audio .quick-audio-app combobox button { min-height: 30px; }
+.power-profiles .power-segments {
+    background-color: @qs_container;
+    border-radius: 28px;
+    padding: 3px;
+}
+.quick-profile .power-profiles .power-segments button { border-radius: 24px; }
+.quick-profile .power-profiles .power-segments button:checked {
+    background-color: @qs_primary_container;
+    color: @qs_primary;
+}
+.power-profiles .power-status { color: @qs_on_surface_variant; font-size: 12px; }
+.quick-wifi .quick-wifi-status, .quick-wifi .quick-wifi-detail {
+    color: @qs_on_surface_variant;
+    font-size: 12px;
+}
+.quick-wifi .quick-wifi-status { padding: 0 4px; }
+.quick-wifi .quick-wifi-status.quick-error { color: @qs_error; }
+.quick-wifi .quick-wifi-name { font-weight: bold; }
+.quick-profile .quick-wifi button.quick-wifi-primary {
+    background-color: @qs_primary_container;
+    color: @qs_on_primary_container;
+    border-radius: 22px;
+    padding: 0 10px;
+}
+.quick-profile .quick-wifi button.quick-wifi-primary:hover {
+    background-color: mix(@qs_primary_container, @qs_primary, 0.15);
+}
+.quick-profile .quick-wifi button.quick-wifi-row {
+    border-radius: 10px;
+    padding: 0 8px;
+    border-bottom-color: alpha(@qs_outline, 0.5);
+}
+.quick-profile .quick-wifi button.quick-wifi-row:focus { border-color: @qs_primary; }
+.quick-profile .quick-wifi button.quick-wifi-active {
+    opacity: 1;
+    background-color: @qs_primary_container;
+    color: @qs_on_primary_container;
+}
+.quick-wifi .quick-wifi-prompt, .quick-profile .quick-wifi entry {
+    background-color: @qs_container;
+    color: @qs_on_surface;
+    border: 1px solid @qs_outline;
+    border-radius: 12px;
+    box-shadow: none;
+}
+.quick-wifi .quick-wifi-prompt { padding: 10px; }
+.quick-profile .quick-wifi entry { min-height: 38px; }
+.quick-profile .quick-wifi entry:focus { border-color: @qs_primary; }

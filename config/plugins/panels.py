@@ -191,7 +191,7 @@ class Popup:
 
     def close_hover(self):
         self.close_timer = 0
-        if self.brightness_dragging:
+        if self.brightness_dragging or (self.quick_settings and self.quick_settings.page_holds_pointer()):
             self.close_timer = GLib.timeout_add(350, self.close_hover)
             return False
         if not self.inside: self.hide()
@@ -217,6 +217,8 @@ class Popup:
         for popup in self.app.popups:
             if popup is not self: popup.hide()
         self.window.show_all()
+        if self.quick_settings:
+            self.render(getattr(self.app, 'profile_data', self.data))
         self.app.calendar.refresh()
         self.app.refresh()
 
@@ -311,12 +313,16 @@ class App:
         self.game_pending = False
         self.game_bars = []
         self.pool = ThreadPoolExecutor(max_workers=1)
+        self.profile_pool = ThreadPoolExecutor(max_workers=2)
         self.action_pool = ThreadPoolExecutor(max_workers=2)
         self.music_pool = ThreadPoolExecutor(max_workers=1)
         self.music_pending = False
         self.music_message = ''
         self.music_error = ''
         self.pending = False
+        self.profile_pending = set()
+        self.profile_data = {}
+        self.monitor_timer = 0
         self.popups = []
         css = Gtk.CssProvider()
         self.css = css
@@ -360,12 +366,24 @@ class App:
         for window in self.game_bars: window.destroy()
         self.game_bars = []
         for popup in self.popups: popup.destroy()
-        self.popups = [Popup(self, self.display.get_monitor(i), i, kind)
-                       for i in range(self.display.get_n_monitors()) for kind in ['profile', 'dashboard']]
+        self.popups = [Popup(self, monitor, i, kind)
+                       for i, monitor in self.connected_monitors() for kind in ('profile', 'dashboard')]
         self.build_game_bars()
         if hasattr(self, 'fullscreen'): self.fullscreen.refresh()
 
     def monitors_changed(self):
+        if self.monitor_timer:
+            GLib.source_remove(self.monitor_timer)
+        self.monitor_timer = GLib.timeout_add(300, self.rebuild_after_hotplug)
+
+    def connected_monitors(self):
+        for i in range(self.display.get_n_monitors()):
+            monitor = self.display.get_monitor(i)
+            if monitor and monitor.get_geometry().width >= 48:
+                yield i, monitor
+
+    def rebuild_after_hotplug(self):
+        self.monitor_timer = 0
         self.fracture.clear()
         self.rebuild()
         def work():
@@ -374,14 +392,15 @@ class App:
             except Exception as exc:
                 print(f'g8d wallpaper hotplug: {exc}', file=sys.stderr, flush=True)
         self.pool.submit(work)
+        return GLib.SOURCE_REMOVE
 
     def build_game_bars(self):
         for window in self.game_bars: window.destroy()
         self.game_bars = []
         if not self.game_state.get('enabled'): return
-        for i in range(self.display.get_n_monitors()):
+        for i, monitor in self.connected_monitors():
             popup = next(p for p in self.popups if p.index == i and p.kind == 'profile')
-            window = popup.surface(self.display.get_monitor(i), 'g8d-game-bar', popup=True)
+            window = popup.surface(monitor, 'g8d-game-bar', popup=True)
             window.get_style_context().add_class('game-bar')
             Layer.set_layer(window, Layer.Layer.TOP)
             Layer.set_anchor(window, Layer.Edge.LEFT, True)
@@ -452,6 +471,7 @@ class App:
                 self.reload_interface()
             if message.get('branding') == 'reload': self.build_game_bars()
             if message.get('game') == 'toggle': self.toggle_game()
+            if message.get('sound') == 'toggle': self.sound_popup(message.get('cursor'))
             if isinstance(message.get('cursor_effect'), bool): self.fracture.set_enabled(message['cursor_effect'], persist=False)
             if isinstance(message.get('brightness'), dict):
                 values = message['brightness']
@@ -470,13 +490,58 @@ class App:
         except (ValueError, OSError, AttributeError): pass
         return True
 
+    def popup_under_cursor(self, kind, cursor):
+        profiles = [popup for popup in self.popups if popup.kind == kind]
+        if not profiles:
+            return
+        if isinstance(cursor, dict):
+            x, y = cursor.get('x'), cursor.get('y')
+            if isinstance(x, (int, float)) and isinstance(y, (int, float)):
+                for profile in profiles:
+                    bounds = profile.monitor.get_geometry()
+                    if bounds.x <= x < bounds.x + bounds.width and bounds.y <= y < bounds.y + bounds.height:
+                        return profile
+        return profiles[0]
+
+    def sound_popup(self, cursor):
+        popup = self.popup_under_cursor('profile', cursor)
+        if not popup:
+            return
+        if popup.window.get_visible() and popup.quick_settings.sound_active():
+            popup.hide()
+            return
+        popup.show()
+        if popup.window.get_visible():
+            popup.quick_settings.show_sound()
+
     def refresh(self):
         opened = next((p for p in self.popups if p.window.get_visible()), None)
-        if opened and not self.pending:
+        if opened and opened.kind == 'profile':
+            for name, collect in (('status', self.collector.quick_status),
+                                  ('brightness', brightness.read)):
+                if name not in self.profile_pending:
+                    self.profile_pending.add(name)
+                    future = self.profile_pool.submit(collect)
+                    future.add_done_callback(lambda result, section=name: GLib.idle_add(self.update_profile, section, result))
+        elif opened and not self.pending:
             self.pending = True
             future = self.pool.submit(self.collector.collect, opened.kind)
             future.add_done_callback(lambda result: GLib.idle_add(self.update, opened, result))
         return True
+
+    def update_profile(self, section, result):
+        self.profile_pending.discard(section)
+        try:
+            data = result.result()
+            self.profile_data.update(data if section == 'status' else {'brightness': data})
+            for popup in self.popups:
+                if popup.kind == 'profile' and popup.window.get_visible() and not popup.brightness_dragging:
+                    popup.render(self.profile_data)
+                    if os.environ.get('G8D_PREVIEW') == '1':
+                        (ROOT.parent / 'preview-profile.json').write_text(json.dumps(self.profile_data, ensure_ascii=False, indent=2))
+        except Exception as exc:
+            print(f'g8d quick settings ({section}): {exc}', file=sys.stderr, flush=True)
+        return GLib.SOURCE_REMOVE
 
     def update(self, popup, result):
         self.pending = False
@@ -569,17 +634,33 @@ class App:
         self.socket.close()
         SOCKET.unlink(missing_ok=True)
         self.pool.shutdown(wait=False, cancel_futures=True)
+        self.profile_pool.shutdown(wait=False, cancel_futures=True)
         self.action_pool.shutdown(wait=False, cancel_futures=True)
         self.music_pool.shutdown(wait=False, cancel_futures=True)
         Gtk.main_quit()
         return False
 
 
+def cli_message(args):
+    action = args[0]
+    if action == 'sound':
+        try:
+            cursor = json.loads(subprocess.check_output(
+                ['hyprctl', '-j', 'cursorpos'], text=True, stderr=subprocess.DEVNULL, timeout=1))
+        except (OSError, ValueError, subprocess.SubprocessError):
+            cursor = None
+        return {action: 'toggle', 'cursor': cursor}
+    if action == 'game':
+        return {'game': 'toggle'}
+    if action == 'hide':
+        return {'hide': True}
+    return {'show': action, 'monitor': int(args[1]) if len(args) > 1 else 0}
+
+
 if __name__ == '__main__':
     if len(sys.argv) > 1:
         with socket.socket(socket.AF_UNIX, socket.SOCK_DGRAM) as connection:
-            connection.sendto(json.dumps({'game': 'toggle'} if sys.argv[1] == 'game' else {'hide': True} if sys.argv[1] == 'hide' else
-                                        {'show': sys.argv[1], 'monitor': int(sys.argv[2]) if len(sys.argv) > 2 else 0}).encode(), str(SOCKET))
+            connection.sendto(json.dumps(cli_message(sys.argv[1:])).encode(), str(SOCKET))
     else:
         Gtk.init(None)
         if not Layer.is_supported(): raise SystemExit('g8d panels require Wayland Layer Shell')

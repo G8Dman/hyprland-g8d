@@ -26,13 +26,22 @@ def latest(releases):
     if not eligible:raise RuntimeError('Опубликованные релизы не найдены')
     return max(eligible,key=lambda r:version(r['tag_name']))
 
-def fetch(url,path=None,limit=16*1024*1024):
+def fetch(url,path=None,limit=16*1024*1024,timeout=45):
     request=urllib.request.Request(url,headers={'User-Agent':'hyprland-g8d-updater','Accept':'application/vnd.github+json' if url==API else '*/*'})
-    with urllib.request.urlopen(request,timeout=45) as response:
+    with urllib.request.urlopen(request,timeout=timeout) as response:
         data=response.read(limit+1)
     if len(data)>limit:raise RuntimeError('Ответ сервера превышает допустимый размер')
     if path:path.write_bytes(data)
     return data
+
+def release_assets(release):
+    tag = release['tag_name']
+    base = f'https://github.com/{REPO}/releases/download/{tag}/'
+    assets = {item['name']: item['browser_download_url'] for item in release.get('assets', [])}
+    for name in (f'hyprland-g8d-{tag}.tar.gz', 'SHA256SUMS'):
+        if not assets.get(name, '').startswith(base):
+            raise RuntimeError('Релиз ещё не готов: отсутствует архив или контрольная сумма')
+    return assets
 
 def unpack(archive,destination):
     with tarfile.open(archive,'r:gz') as source:
@@ -60,10 +69,7 @@ def update():
         if version(current) and version(tag)<=version(current):
             print('Установлена актуальная версия: '+current);return
         name='hyprland-g8d-'+tag+'.tar.gz'
-        assets={a['name']:a['browser_download_url'] for a in release.get('assets',[])}
-        for item in [name,'SHA256SUMS']:
-            if item not in assets or not assets[item].startswith('https://github.com/'+REPO+'/releases/download/'+tag+'/'):
-                raise RuntimeError('Релиз ещё не готов: отсутствует архив или контрольная сумма')
+        assets=release_assets(release)
         with tempfile.TemporaryDirectory(prefix='g8d-update-') as directory:
             work=Path(directory);archive=work/name
             checks=fetch(assets['SHA256SUMS'],limit=65536).decode()

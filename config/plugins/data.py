@@ -133,7 +133,7 @@ def media_control(name, method):
 
 
 def radio():
-    wifi = run(['nmcli', '-t', '-f', 'WIFI', 'general'])
+    wifi = run(['nmcli', '-t', '-f', 'WIFI,WIFI-HW', 'general']).split(':')
     devices = run(['nmcli', '-t', '-f', 'DEVICE,TYPE,STATE,CONNECTION', 'device'])
     connections = []
     for line in devices.splitlines():
@@ -143,7 +143,8 @@ def radio():
                                 'connection': ':'.join(fields[3:]).replace('\\:', ':')})
     bluetooth = run(['bluetoothctl', 'show'])
     connected = run(['bluetoothctl', 'devices', 'Connected']) if bluetooth else ''
-    return {'wifi': wifi or 'unavailable', 'connections': connections,
+    wifi_state = wifi[0] if connections and len(wifi) == 2 and wifi[1] == 'enabled' else 'unavailable'
+    return {'wifi': wifi_state, 'connections': connections,
             'bluetooth': ('on' if 'Powered: yes' in bluetooth else 'off') if bluetooth else 'unavailable',
             'bluetooth_devices': [' '.join(line.split()[2:]) for line in connected.splitlines() if line.startswith('Device ')]}
 
@@ -188,11 +189,14 @@ class Collector:
         self.processes = {}
         psutil.cpu_percent()
 
+    def quick_status(self):
+        ram = psutil.virtual_memory()
+        return {**self.user, **radio(), 'uptime': int(time.time() - psutil.boot_time()),
+                'ram_used': (ram.total - ram.available) / 1073741824}
+
     def collect(self, kind):
         if kind == 'profile':
-            ram = psutil.virtual_memory()
-            return {**self.user, **radio(), 'uptime': int(time.time() - psutil.boot_time()),
-                    'ram_used': (ram.total - ram.available) / 1073741824, 'brightness': brightness.read()}
+            return {**self.quick_status(), 'brightness': brightness.read()}
         cpu = psutil.cpu_percent(interval=0.15)
         ram = psutil.virtual_memory()
         swap = psutil.swap_memory()

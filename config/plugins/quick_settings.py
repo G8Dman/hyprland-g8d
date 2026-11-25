@@ -82,10 +82,17 @@ class QuickSettings:
         self.data = {}
         self.monitor_keys = None
         self.brightness_rows = {}
-        self.root = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=12)
+        self.wifi_page = None
+        self.bluetooth_page = None
+        self.audio_page = None
+        self.root = Gtk.Stack()
+        self.root.set_homogeneous(False)
+        main = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=12)
+        self.root.add_named(main, 'main')
         popup.window.get_style_context().add_class('quick-profile')
         Layer.set_keyboard_mode(popup.window, Layer.KeyboardMode.ON_DEMAND)
         popup.window.connect('key-press-event', self.key)
+        popup.window.connect('hide', lambda *_: self.close_page())
         popup.window.connect('destroy', lambda *_: self.dispose())
 
         header = Gtk.Box(spacing=8)
@@ -102,45 +109,142 @@ class QuickSettings:
                                    lambda: popup.launch([self.actions, 'power'])), False, False, 0)
         header.pack_end(icon_button('settings', 'Настройки рабочего стола',
                                    lambda: popup.launch([self.actions, 'settings'])), False, False, 0)
-        self.root.pack_start(header, False, False, 0)
+        main.pack_start(header, False, False, 0)
 
         self.wifi = IconToggle('Wi-Fi', 'wifi', 'wifi-off', lambda b: self.radio('wifi', b))
         self.bluetooth = IconToggle('Bluetooth', 'bluetooth', 'bluetooth-disabled', lambda b: self.radio('bluetooth', b))
         radios = Gtk.Box(spacing=8, homogeneous=True)
-        for toggle, symbol, title, command in [
-                (self.wifi, 'chevron-right', 'Сети и подключения Wi-Fi', ['nm-connection-editor']),
-                (self.bluetooth, 'chevron-right', 'Устройства Bluetooth', ['blueman-manager'])]:
+        for toggle, title, callback in (
+                (self.wifi, 'Сети Wi-Fi', self.show_wifi),
+                (self.bluetooth, 'Устройства Bluetooth', self.show_bluetooth)):
             group = Gtk.Box(spacing=4)
             group.pack_start(toggle.button, True, True, 0)
-            detail = icon_button(symbol, title, lambda c=command: popup.launch(c), 'quick-detail')
+            detail = icon_button('chevron-right', title, callback, 'quick-detail')
             detail.set_size_request(48, 64)
             group.pack_end(detail, False, False, 0)
             radios.pack_start(group, True, True, 0)
-        self.root.pack_start(radios, False, False, 0)
+            if toggle is self.bluetooth:
+                self.bluetooth_detail = detail
+            else:
+                self.wifi_detail = detail
+        main.pack_start(radios, False, False, 0)
 
         modes = Gtk.Box(spacing=8, homogeneous=True)
         self.game = IconToggle('Игровой режим', 'sports-esports', 'sports-esports', self.toggle_game, height=56)
         self.effects = IconToggle('Эффект перехода курсора', 'blur-on', 'blur-off', self.toggle_effects, height=56)
         modes.pack_start(self.game.button, True, True, 0)
         modes.pack_start(self.effects.button, True, True, 0)
-        self.root.pack_start(modes, False, False, 0)
+        main.pack_start(modes, False, False, 0)
+
+        from power_panel import PowerPanel
+        self.power_panel = PowerPanel(popup)
+        main.pack_start(self.power_panel.root, False, False, 0)
 
         self.monitors = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=4)
-        self.root.pack_start(self.monitors, False, False, 0)
+        main.pack_start(self.monitors, False, False, 0)
         self.footer = text('', 'quick-footer', 48)
-        self.root.pack_start(self.footer, False, False, 0)
+        main.pack_start(self.footer, False, False, 0)
         self.notice = text('', 'quick-error', 46)
         self.notice.set_no_show_all(True)
-        self.root.pack_start(self.notice, False, False, 0)
+        main.pack_start(self.notice, False, False, 0)
+
+    def show_wifi(self):
+        if self.wifi_page is None:
+            from wifi_networks import Wifi
+            from wifi_panel import WifiPanel
+            if not hasattr(self.app, 'wifi_controller'):
+                self.app.wifi_controller = Wifi()
+            self.wifi_page = WifiPanel(self.app.wifi_controller, self.back_from_wifi,
+                                       lambda: self.popup.launch(['nm-connection-editor']))
+            self.root.add_named(self.wifi_page.root, 'wifi')
+            self.wifi_page.root.show_all()
+        self.root.set_visible_child_name('wifi')
+        self.popup.window.resize(1, 1)
+        self.wifi_page.open()
+        self.wifi_page.back.grab_focus()
+
+    def back_from_wifi(self, *_):
+        if self.root.get_visible_child_name() == 'wifi':
+            self.wifi_page.close()
+            self.root.set_visible_child_name('main')
+            self.popup.window.resize(1, 1)
+            self.wifi_detail.grab_focus()
+
+    def show_bluetooth(self):
+        if self.bluetooth_page is None:
+            from bluetooth import Bluetooth
+            from bluetooth_panel import BluetoothPanel
+            if not hasattr(self.app, 'bluetooth_controller'):
+                self.app.bluetooth_controller = Bluetooth(self.app.action_pool)
+            self.bluetooth_page = BluetoothPanel(self.app.bluetooth_controller, self.back_from_bluetooth)
+            self.root.add_named(self.bluetooth_page.root, 'bluetooth')
+            self.bluetooth_page.root.show_all()
+        self.root.set_visible_child_name('bluetooth')
+        self.popup.window.resize(1, 1)
+        self.bluetooth_page.open()
+        self.bluetooth_page.back.grab_focus()
+
+    def back_from_bluetooth(self, *_):
+        if self.root.get_visible_child_name() == 'bluetooth':
+            self.bluetooth_page.close()
+            self.root.set_visible_child_name('main')
+            self.popup.window.resize(1, 1)
+            self.bluetooth_detail.grab_focus()
+
+    def pairing_active(self):
+        return (self.root.get_visible_child_name() == 'bluetooth' and
+                self.bluetooth_page.controller.pairing is not None)
+
+    def page_holds_pointer(self):
+        return self.pairing_active() or (
+            self.root.get_visible_child_name() == 'wifi' and self.wifi_page.holds_pointer()) or (
+            self.root.get_visible_child_name() == 'sound' and self.audio_page.holds_pointer())
+
+    def sound_active(self):
+        return self.root.get_visible_child_name() == 'sound'
+
+    def show_sound(self):
+        self.back_from_wifi()
+        self.back_from_bluetooth()
+        if self.audio_page is None:
+            from audio_panel import AudioPanel
+            self.audio_page = AudioPanel(self.app.action_pool, self.popup.hide)
+            self.root.add_named(self.audio_page.root, 'sound')
+            self.audio_page.root.show_all()
+        self.root.set_visible_child_name('sound')
+        self.popup.window.resize(1, 1)
+        self.audio_page.open()
+
+    def close_page(self):
+        if self.sound_active():
+            self.audio_page.close()
+            self.root.set_visible_child_name('main')
+            self.popup.window.resize(1, 1)
+        else:
+            self.back_from_wifi()
+            self.back_from_bluetooth()
 
     def key(self, _, event):
         if event.keyval == Gdk.KEY_Escape:
-            self.popup.hide()
+            if self.root.get_visible_child_name() == 'wifi':
+                if self.wifi_page.selected:
+                    self.wifi_page.clear_prompt()
+                    self.wifi_page.back.grab_focus()
+                else:
+                    self.back_from_wifi()
+            elif self.root.get_visible_child_name() == 'bluetooth':
+                self.back_from_bluetooth()
+            else:
+                self.popup.hide()
             return True
         return False
 
     def dispose(self):
         self.disposed = True
+        self.power_panel.disposed = True
+        self.close_page()
+        if self.bluetooth_page:
+            self.bluetooth_page.close()
         for toggle in (self.wifi, self.bluetooth, self.game, self.effects): toggle.spinner.stop()
 
     def radio(self, kind, button):
@@ -210,18 +314,24 @@ class QuickSettings:
 
     def update(self, data):
         self.data = dict(data)
+        if self.popup.window.get_visible() and self.root.get_visible_child_name() == 'main':
+            self.power_panel.refresh()
         self.syncing = True
         try:
             user = self.app.collector.user
             name = data.get('name', user['name'])
             self.name.set_text(name)
             self.name.set_tooltip_text(f"{name}\n{data.get('user', user['user'])}@{data.get('host', user['host'])}\n{data.get('os', user['os'])}")
-            wifi = data.get('wifi', 'unavailable')
-            bluetooth = data.get('bluetooth', 'unavailable')
+            wifi = data.get('wifi')
+            bluetooth = data.get('bluetooth')
             connection = ', '.join(c.get('connection') or c.get('state', '') for c in data.get('connections', []))
             devices = ', '.join(data.get('bluetooth_devices', [])) or 'Нет подключённых устройств'
-            if 'wifi' not in self.busy: self.wifi.update(wifi == 'enabled', wifi in ('enabled', 'disabled'), description=connection)
-            if 'bluetooth' not in self.busy: self.bluetooth.update(bluetooth == 'on', bluetooth in ('on', 'off'), description=devices)
+            if 'wifi' not in self.busy:
+                self.wifi.update(wifi == 'enabled', wifi in ('enabled', 'disabled'), busy=wifi is None,
+                                 description=connection)
+            if 'bluetooth' not in self.busy:
+                self.bluetooth.update(bluetooth == 'on', bluetooth in ('on', 'off'), busy=bluetooth is None,
+                                      description=devices)
             enabled = self.app.game_state.get('enabled', False)
             released = self.app.game_state.get('released_component_pss_mib', 0)
             self.game.update(enabled, busy=self.app.game_pending,
@@ -239,6 +349,6 @@ class QuickSettings:
                 scale.set_tooltip_text(monitor['title'] + reason)
             minutes = data.get('uptime', 0) // 60
             memory = f" · RAM {data['ram_used']:.1f} ГБ" if 'ram_used' in data else ''
-            self.footer.set_text(f'{minutes // 60} ч {minutes % 60} мин' + memory)
+            self.footer.set_text(f'{minutes // 60} ч {minutes % 60} мин' + memory if 'uptime' in data else '')
         finally:
             self.syncing = False
